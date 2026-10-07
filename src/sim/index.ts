@@ -131,6 +131,7 @@ function updateAbsence(st: MatchState, inputs: (Input | null | undefined)[], pre
       if (f.absentSince === null) {
         f.absentSince = prevTick;
         f.vx = 0;
+        f.inked = 0;
         st.events.push({ type: "drop", slot: f.slot });
       }
     } else if (f.absentSince !== null) {
