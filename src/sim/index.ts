@@ -547,6 +547,35 @@ function checkKOs(st: MatchState): void {
   }
 }
 
+const PUSH_MAX = 1.5;
+
+/** Soft push-apart of overlapping fighters, along x only; lower slot goes left on an exact tie. */
+function pushApart(st: MatchState): void {
+  const list = st.fighters.filter(onField);
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length; j++) {
+      const a = list[i];
+      const b = list[j];
+      if (a.hitstop > 0 || b.hitstop > 0) continue;
+      const da = FIGHTERS[a.fighter];
+      const db = FIGHTERS[b.fighter];
+      const overlapX = (da.width + db.width) / 2 - Math.abs(a.x - b.x);
+      const overlapY = Math.min(a.y, b.y) - Math.max(a.y - da.height, b.y - db.height);
+      if (overlapX <= 0 || overlapY <= 0) continue;
+      const amount = Math.min(PUSH_MAX, overlapX / 2);
+      const dir = a.x === b.x ? (a.slot < b.slot ? -1 : 1) : a.x < b.x ? -1 : 1; // direction a moves
+      for (const [f, d] of [[a, dir], [b, -dir]] as const) {
+        let nx = f.x + d * amount;
+        if (f.grounded) {
+          const sup = supportAt(f, st.stage);
+          if (sup) nx = clamp(nx, sup.x1, sup.x2);
+        }
+        f.x = nx;
+      }
+    }
+  }
+}
+
 function tickRespawns(st: MatchState): void {
   for (const f of st.fighters) {
     if (!f || f.action !== "dead" || f.stocks <= 0 || f.forfeited || f.absentSince !== null) continue;
@@ -601,6 +630,7 @@ export function step(state: MatchState, inputs: (Input | null | undefined)[]): M
     if (!onField(f)) continue;
     updateFighter(st, f, inputs[f.slot] ?? NO_INPUT);
   }
+  pushApart(st);
   tickRespawns(st);
   stepProjectiles(st);
   stepItems(st);
