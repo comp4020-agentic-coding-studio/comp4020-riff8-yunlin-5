@@ -148,7 +148,7 @@ export class Input {
     } catch {
       return out;
     }
-    for (const p of pads) {
+    for (const p of pads ?? []) {
       if (!p || !p.connected) continue;
       const bt = (i) => !!p.buttons[i]?.pressed;
       let ax = p.axes[0] || 0;
