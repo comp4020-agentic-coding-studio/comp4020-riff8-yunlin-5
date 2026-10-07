@@ -32,6 +32,10 @@ export class Sfx {
       const d = this.noise.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.ctx = ctx;
+      // a suspend can drop onended callbacks; start the voice count afresh on resume
+      ctx.onstatechange = () => {
+        if (ctx.state === "running") this.voices = 0;
+      };
     }
     if (this.ctx.state === "suspended") this.ctx.resume();
   }
@@ -62,7 +66,7 @@ export class Sfx {
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g).connect(this.master);
     this.voices++;
-    o.onended = () => this.voices--;
+    o.onended = () => (this.voices = Math.max(0, this.voices - 1));
     o.start(t);
     o.stop(t + dur + 0.02);
   }
@@ -84,7 +88,7 @@ export class Sfx {
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     s.connect(fl).connect(g).connect(this.master);
     this.voices++;
-    s.onended = () => this.voices--;
+    s.onended = () => (this.voices = Math.max(0, this.voices - 1));
     s.start(t, Math.random() * 0.5);
     s.stop(t + dur + 0.02);
   }

@@ -18,17 +18,22 @@ export class Net {
     this.seq = 0;
     this.closedForGood = false;
     this.retry = 0;
+    this.mySlot = null; // set by game.js: which fighter is ours
+    this.lead = !/[?&]lead=0\b/.test(location.search);
+    this.leadPos = null;
+    this.lastViewAt = 0;
   }
 
   connect() {
     const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
     const ws = new WebSocket(url);
     this.ws = ws;
+    let pingTimer = 0; // per socket, so a late close of an old one can't stop the new one's pings
     ws.onopen = () => {
       this.retry = 0;
       const room = this.room || document.body.dataset.room || "";
       this.send(room ? { t: "join", room: room.toUpperCase() } : { t: "join" });
-      this.pingTimer = setInterval(() => this.ping(), 2000);
+      pingTimer = setInterval(() => ws === this.ws && this.ping(), 2000);
       this.ping();
       this.on.open?.();
     };
@@ -42,7 +47,7 @@ export class Net {
       this.handle(m);
     };
     ws.onclose = (e) => {
-      clearInterval(this.pingTimer);
+      clearInterval(pingTimer);
       if (ws !== this.ws) return; // an old socket closing after a manual reconnect
       if (e.code === 4000 && !this.closedForGood) {
         // another tab/device took this seal's seat: never fight for it automatically
@@ -172,6 +177,7 @@ export class Net {
       }
       fighters.push(f);
     }
+    this.applyLead(fighters, s[s.length - 1], now);
     const projectiles = [];
     for (const pb of b.projectiles) {
       const pa = a.projectiles.find((x) => x.id === pb.id);
@@ -185,6 +191,32 @@ export class Net {
       fighters,
       projectiles,
     };
+  }
+
+  // Own fighter comes from the newest snapshot instead of ~2 snaps back, eased a
+  // little so the 30 Hz steps don't show as jitter. Others stay interpolated; no
+  // extrapolation. ?lead=0 turns it off.
+  applyLead(fighters, newest, now) {
+    const dt = Math.min(100, this.lastViewAt ? now - this.lastViewAt : 16);
+    this.lastViewAt = now;
+    if (!this.lead || this.mySlot == null || newest.phase !== "fight") {
+      this.leadPos = null;
+      return;
+    }
+    const i = fighters.findIndex((f) => f.slot === this.mySlot);
+    const nf = newest.fighters.find((f) => f.slot === this.mySlot);
+    if (i < 0 || !nf || nf.absent || nf.out) {
+      this.leadPos = null;
+      return;
+    }
+    const p = this.leadPos;
+    if (!p || Math.abs(nf.x - p.x) > 160 || Math.abs(nf.y - p.y) > 160) this.leadPos = { x: nf.x, y: nf.y };
+    else {
+      const k = 1 - Math.exp(-dt / 25);
+      p.x += (nf.x - p.x) * k;
+      p.y += (nf.y - p.y) * k;
+    }
+    fighters[i] = { ...nf, x: this.leadPos.x, y: this.leadPos.y };
   }
 
   // Events from snaps whose tick the render clock has now passed.
