@@ -5,11 +5,12 @@ import { FIGHTER_IDS, GRACE_TICKS, STAGES } from "../sim/index.ts";
 
 export type ClientMsg =
   | { t: "join"; room?: string }
-  | { t: "pick"; fighter: FighterId }
+  | { t: "pick"; fighter: FighterId; p: 0 | 1 }
   | { t: "ready"; ready: boolean }
   | { t: "cpu"; add: boolean }
   | { t: "stage"; id: StageId }
-  | { t: "input"; seq: number; b: number; x: number; y: number }
+  | { t: "guest"; add: boolean }
+  | { t: "input"; seq: number; p: 0 | 1; b: number; x: number; y: number }
   | { t: "ping"; id: number };
 
 const ROOM_RE = /^[A-Za-z]{4}$/;
@@ -18,6 +19,9 @@ const MAX_INT = 2 ** 31;
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const intIn = (v: unknown, lo: number, hi: number): v is number =>
   typeof v === "number" && Number.isInteger(v) && v >= lo && v <= hi;
+
+// Which local player a message is for: absent means the socket's own seat.
+const parseP = (v: unknown): 0 | 1 | null => (v === undefined || v === 0 ? 0 : v === 1 ? 1 : null);
 
 export function parseClientMessage(raw: string): ClientMsg | null {
   let v: unknown;
@@ -33,18 +37,20 @@ export function parseClientMessage(raw: string): ClientMsg | null {
       if (typeof v.room === "string" && ROOM_RE.test(v.room)) return { t: "join", room: v.room.toUpperCase() };
       return null;
     case "pick":
-      return typeof v.fighter === "string" && (FIGHTER_IDS as readonly string[]).includes(v.fighter)
-        ? { t: "pick", fighter: v.fighter as FighterId }
+      return typeof v.fighter === "string" && (FIGHTER_IDS as readonly string[]).includes(v.fighter) && parseP(v.p) !== null
+        ? { t: "pick", fighter: v.fighter as FighterId, p: parseP(v.p)! }
         : null;
     case "ready":
       return typeof v.ready === "boolean" ? { t: "ready", ready: v.ready } : null;
     case "cpu":
       return typeof v.add === "boolean" ? { t: "cpu", add: v.add } : null;
+    case "guest":
+      return typeof v.add === "boolean" ? { t: "guest", add: v.add } : null;
     case "stage":
       return typeof v.id === "string" && Object.hasOwn(STAGES, v.id) ? { t: "stage", id: v.id as StageId } : null;
     case "input":
-      return intIn(v.seq, 0, MAX_INT - 1) && intIn(v.b, 0, 15) && intIn(v.x, -100, 100) && intIn(v.y, -100, 100)
-        ? { t: "input", seq: v.seq, b: v.b, x: v.x, y: v.y }
+      return intIn(v.seq, 0, MAX_INT - 1) && intIn(v.b, 0, 15) && intIn(v.x, -100, 100) && intIn(v.y, -100, 100) && parseP(v.p) !== null
+        ? { t: "input", seq: v.seq, p: parseP(v.p)!, b: v.b, x: v.x, y: v.y }
         : null;
     case "ping":
       return intIn(v.id, 0, MAX_INT - 1) ? { t: "ping", id: v.id } : null;

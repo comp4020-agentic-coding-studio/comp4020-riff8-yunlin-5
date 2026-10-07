@@ -25,16 +25,18 @@ export interface Client {
   token: string; // server-only
   glyph: string;
   room: Room | null;
-  slot: Slot | null;
-  lastInput: Input;
-  lastInputTick: number;
-  latched: number; // OR of every b received since the last tick, so a tap shorter than a tick still lands
+  slot: Slot | null; // the socket's own seat
+  guestSlot: Slot | null; // the local guest's seat, if one was added
   send(data: string): void;
   close(code: number, reason?: string): void;
 }
 
 interface Seat {
-  token: string;
+  key: string; // the token, or `${token}#guest` for a guest seat; never sent
+  guest: boolean;
+  input: Input;
+  inputTick: number;
+  latched: number; // OR of every b received since the last tick, so a tap shorter than a tick still lands
   glyph: string;
   fighter: FighterId;
   ready: boolean;
@@ -89,7 +91,11 @@ export class Room {
     const glyph = this.uniqueGlyph(GLYPH_POOL, sealGlyph(client.token));
     client.glyph = glyph;
     this.seats[slot] = {
-      token: client.token,
+      key: client.token,
+      guest: false,
+      input: NO_INPUT,
+      inputTick: 0,
+      latched: 0,
       glyph,
       fighter: "wanderer",
       ready: false,
@@ -105,23 +111,32 @@ export class Room {
    * seat takes it over (docs D5): the old socket, if any, is told and closed.
    */
   join(client: Client): "room_full" | { rejoined: boolean } {
+    const guestKey = `${client.token}#guest`;
+    let took = false;
     for (const s of slots) {
       const seat = this.seats[s];
-      if (!seat || seat.cpu || seat.token !== client.token) continue;
+      if (!seat || seat.cpu || (seat.key !== client.token && seat.key !== guestKey)) continue;
       const old = seat.client;
       if (old && old !== client) {
         this.clients.delete(old);
         old.room = null;
         old.slot = null;
+        old.guestSlot = null;
         old.send(JSON.stringify({ t: "error", code: "replaced", message: "This seal joined from somewhere else." }));
         old.close(4000, "replaced");
       }
       seat.client = client;
-      client.slot = s;
-      client.glyph = seat.glyph;
-      client.latched = 0;
-      client.lastInput = NO_INPUT; // a non-null input is what brings an absent fighter back
-      client.lastInputTick = this.state?.tick ?? 0;
+      seat.latched = 0;
+      seat.input = NO_INPUT; // a non-null input is what brings an absent fighter back
+      seat.inputTick = this.state?.tick ?? 0;
+      if (seat.guest) client.guestSlot = s;
+      else {
+        client.slot = s;
+        client.glyph = seat.glyph;
+      }
+      took = true;
+    }
+    if (took) {
       this.attach(client);
       return { rejoined: this.phase === "match" };
     }
@@ -142,23 +157,25 @@ export class Room {
   leave(client: Client, now: number): void {
     if (!this.clients.delete(client)) return;
     client.room = null;
-    if (client.slot !== null) {
-      const seat = this.seats[client.slot];
+    for (const slot of [client.slot, client.guestSlot]) {
+      if (slot === null) continue;
+      const seat = this.seats[slot];
       if (seat && seat.client === client) {
         // In a match the seat stays so the same token can reclaim it; the sim
         // sees null input for that slot from the next tick (ADR).
         if (this.phase === "match") seat.client = null;
-        else this.seats[client.slot] = null;
+        else this.seats[slot] = null;
       }
-      client.slot = null;
     }
+    client.slot = null;
+    client.guestSlot = null;
     if (this.clients.size === 0) this.emptySince = now;
     this.broadcastLobby();
     this.maybeStart();
   }
 
-  pick(client: Client, fighter: FighterId): void {
-    const seat = this.mySeat(client);
+  pick(client: Client, fighter: FighterId, p: 0 | 1 = 0): void {
+    const seat = p === 1 ? this.guestSeat(client) : this.mySeat(client);
     if (!seat || this.phase !== "lobby") return;
     seat.fighter = fighter;
     this.broadcastLobby();
@@ -168,8 +185,55 @@ export class Room {
     const seat = this.mySeat(client);
     if (!seat || this.phase !== "lobby") return;
     seat.ready = ready;
+    const guest = this.guestSeat(client);
+    if (guest) guest.ready = ready; // the owner's ready toggles both seats
     this.broadcastLobby();
     this.maybeStart();
+  }
+
+  setGuest(client: Client, add: boolean): void {
+    const owner = this.mySeat(client);
+    if (this.phase !== "lobby" || !owner) return;
+    if (add) {
+      const slot = this.freeSlot();
+      if (client.guestSlot !== null || slot === null) return;
+      const key = `${client.token}#guest`;
+      this.seats[slot] = {
+        key,
+        guest: true,
+        input: NO_INPUT,
+        inputTick: 0,
+        latched: 0,
+        glyph: this.uniqueGlyph(GLYPH_POOL, sealGlyph(key)),
+        fighter: "wanderer",
+        ready: owner.ready,
+        cpu: false,
+        client,
+      };
+      client.guestSlot = slot;
+    } else {
+      if (client.guestSlot === null) return;
+      this.seats[client.guestSlot] = null;
+      client.guestSlot = null;
+    }
+    this.broadcastLobby();
+    this.maybeStart();
+  }
+
+  /** Record one input message for the socket's own seat (p 0) or its guest (p 1). */
+  input(client: Client, p: 0 | 1, b: number, x: number, y: number): void {
+    if (!this.state) return;
+    const seat = p === 1 ? this.guestSeat(client) : this.mySeat(client);
+    if (!seat) return;
+    seat.input = { b, x, y };
+    seat.inputTick = this.state.tick;
+    seat.latched |= b;
+  }
+
+  private guestSeat(client: Client): Seat | null {
+    if (client.guestSlot === null) return null;
+    const seat = this.seats[client.guestSlot];
+    return seat && seat.client === client ? seat : null;
   }
 
   setStage(client: Client, id: StageId): void {
@@ -183,7 +247,7 @@ export class Room {
     if (add) {
       const slot = this.freeSlot();
       if (slot === null) return;
-      this.seats[slot] = { token: "", glyph: this.uniqueGlyph(CPU_GLYPHS, CPU_GLYPHS[0]!), fighter: "wanderer", ready: true, cpu: true, client: null };
+      this.seats[slot] = { key: "", guest: false, input: NO_INPUT, inputTick: 0, latched: 0, glyph: this.uniqueGlyph(CPU_GLYPHS, CPU_GLYPHS[0]!), fighter: "wanderer", ready: true, cpu: true, client: null };
     } else {
       for (const s of [...slots].reverse()) {
         if (this.seats[s]?.cpu) {
@@ -244,10 +308,9 @@ export class Room {
       else if (seat.cpu) inputs.push(state.fighters[s] ? cpuInput(state, s) : null);
       else if (!seat.client) inputs.push(null);
       else {
-        const c = seat.client;
-        const cur = state.tick - c.lastInputTick > STALE_INPUT_TICKS ? NO_INPUT : c.lastInput;
-        inputs.push({ b: cur.b | c.latched, x: cur.x, y: cur.y });
-        c.latched = 0;
+        const cur = state.tick - seat.inputTick > STALE_INPUT_TICKS ? NO_INPUT : seat.input;
+        inputs.push({ b: cur.b | seat.latched, x: cur.x, y: cur.y });
+        seat.latched = 0;
       }
     }
     const next = step(state, inputs);
@@ -296,7 +359,7 @@ export class Room {
     // Spectators who waited out the match take free slots, oldest first.
     for (const c of this.clients) {
       if (c.slot !== null) continue;
-      if (this.seats.some((x) => x && !x.cpu && x.token === c.token)) continue; // one seal, one seat
+      if (this.seats.some((x) => x && !x.cpu && x.key === c.token)) continue; // one seal, one seat
       const slot = this.freeSlot();
       if (slot === null) break;
       this.seat(c, slot);
@@ -319,13 +382,14 @@ export class Room {
         if (!seat) return [];
         const f = this.state?.fighters[s];
         const present = (seat.cpu || seat.client !== null) && !f?.forfeited;
-        return [{ slot: s, glyph: seat.glyph, fighter: seat.fighter, ready: seat.ready, cpu: seat.cpu, present }];
+        return [{ slot: s, glyph: seat.glyph, fighter: seat.fighter, ready: seat.ready, cpu: seat.cpu, guest: seat.guest, present }];
       }),
       stage: this.stage,
       stages: Object.values(STAGES).map((g) => ({ id: g.id, name: g.name })),
       stageDef: STAGES[this.stage],
       spectators: this.spectators,
       you: client.slot, // which entry of players is this socket (changes on promotion)
+      youGuest: client.guestSlot, // this socket's local guest seat, or null
     });
   }
 
