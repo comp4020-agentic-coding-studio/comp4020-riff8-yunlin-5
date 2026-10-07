@@ -9,9 +9,9 @@ import { expect, inject, it } from "vitest";
 // percent-encoded forms) before that check runs, so a ".." can't survive to
 // the filesystem read — already true, not a fix, locked in against whatever a
 // future refactor of this route does. A second, independent gate sits behind
-// it: only MIME-listed extensions (.avif/.css/.svg/.ico) are ever read, and
-// nothing with those extensions exists outside public/ in the shipped image,
-// so these cases check the route's whole property, not the path guard alone.
+// it: only paths in the allowlist built from public/ at startup are ever
+// served, so these cases check the route's whole property, not the path guard
+// alone.
 //
 // The paths go out over node:http, not fetch: fetch runs them through the
 // same URL parser on the client side first, so "/public/../README.md" would
@@ -34,6 +34,13 @@ function rawGet(path: string): Promise<number> {
 it("a real file under /public/ is still served", async () => {
   expect(await rawGet("/public/styles.css")).toBe(200);
 });
+
+it.each(["/public/nope.css", "/public/", "/public", "/public/game.js.map", "/public/styles.css/extra", "/public/.env"])(
+  "a path under /public/ that isn't in the allowlist (%s) is a 404",
+  async (path) => {
+    expect(await rawGet(path)).toBe(404);
+  },
+);
 
 it.each([
   "/public/../README.md",
