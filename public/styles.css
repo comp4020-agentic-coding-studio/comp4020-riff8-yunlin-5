@@ -631,3 +631,54 @@ noscript a {
   margin: 0 0 14px;
   font-size: 1.1rem;
 }
+
+.stages {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.stage-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid rgb(31 27 22 / 30%);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.stage-card.on {
+  border: 2px solid var(--ink);
+  background: rgb(31 27 22 / 7%);
+}
+
+.stage-card:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.stage-card:focus-visible {
+  outline: 2px solid var(--seal);
+  outline-offset: 2px;
+}
+
+.stage-art {
+  width: 60px;
+  height: 28px;
+}
+
+@media (height <= 420px) {
+  .stage-art {
+    width: 48px;
+    height: 22px;
+  }
+
+  .stages {
+    margin-top: 4px;
+  }
+}
