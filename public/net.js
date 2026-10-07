@@ -41,8 +41,14 @@ export class Net {
       }
       this.handle(m);
     };
-    ws.onclose = () => {
+    ws.onclose = (e) => {
       clearInterval(this.pingTimer);
+      if (ws !== this.ws) return; // an old socket closing after a manual reconnect
+      if (e.code === 4000 && !this.closedForGood) {
+        // another tab/device took this seal's seat: never fight for it automatically
+        this.closedForGood = true;
+        this.on.error?.({ code: "replaced" });
+      }
       this.on.close?.(this.closedForGood);
       if (!this.closedForGood) {
         this.retry++;
@@ -50,6 +56,17 @@ export class Net {
       }
     };
     ws.onerror = () => {};
+  }
+
+  // Manual reconnect (the "Play here" / "Try again" buttons).
+  reconnect() {
+    this.closedForGood = false;
+    this.retry = 0;
+    this.clear();
+    try {
+      this.ws?.close();
+    } catch {}
+    this.connect();
   }
 
   send(obj) {
