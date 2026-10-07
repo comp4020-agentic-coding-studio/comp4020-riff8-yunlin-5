@@ -1,5 +1,6 @@
 import { escapeHtml } from "./html.ts";
 import type { MatchRecord } from "./db.ts";
+import { STAGES } from "./sim/index.ts";
 
 const TITLE = "墨鬥 Mòdòu";
 
@@ -34,7 +35,7 @@ function historyList(matches: MatchRecord[]): string {
   if (matches.length === 0) return `<p class="empty-note">No matches yet. The scroll is blank.</p>`;
   const items = matches.map((m) => {
     const who = m.winnerGlyph ? `${escapeHtml(m.winnerGlyph)} won with ${escapeHtml(m.winnerFighter ?? "?")}` : "no winner";
-    const where = m.stage ? ` on ${escapeHtml(m.stage)}` : "";
+    const where = m.stage ? ` on ${escapeHtml(Object.hasOwn(STAGES, m.stage) ? STAGES[m.stage as keyof typeof STAGES].name : m.stage)}` : "";
     const roster = m.players.map((p) => `${escapeHtml(p.glyph)} ${escapeHtml(p.fighter)}`).join(", ");
     return `<li>${who}${where} <span class="history-roster">(${roster})</span></li>`;
   });

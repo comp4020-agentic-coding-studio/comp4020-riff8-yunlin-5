@@ -117,6 +117,7 @@ export function buildSnap(state: MatchState, glyphs: readonly string[], events: 
     tick: state.tick,
     phase: state.phase,
     countdown: state.phase === "countdown" ? Math.max(0, COUNTDOWN_TICKS - state.phaseTick) : 0,
+    timeLeft: state.fightTicksLeft,
     fighters,
     items: state.items.map((i) => ({ id: i.id, kind: i.kind, x: r1(i.x), y: r1(i.y) })),
     projectiles: state.projectiles.map((p) => ({ id: p.id, owner: p.owner, x: r1(p.x), y: r1(p.y), r: p.r })),
