@@ -795,3 +795,32 @@ describe("ledge assist and deliberate falls", () => {
     expect(ko).toBe(true);
   });
 });
+
+describe("push-apart", () => {
+  it("two fighters at the same x separate within 30 frames, lower slot to the left", () => {
+    let s = fight();
+    s = edit(s, 0, { x: 0 });
+    s = edit(s, 1, { x: 0 });
+    s = run(s, 30, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 1).x - f(s, 0).x).toBeGreaterThanOrEqual(FIGHTERS.wanderer.width - 0.01);
+    expect(f(s, 0).x).toBeLessThan(f(s, 1).x);
+  });
+  it("never shoves a grounded fighter off the edge", () => {
+    let s = fight();
+    s = edit(s, 0, { x: STAGE.ground.x2 });
+    s = edit(s, 1, { x: STAGE.ground.x2 - 1 });
+    s = run(s, 40, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 0).grounded).toBe(true);
+    expect(f(s, 1).grounded).toBe(true);
+    expect(f(s, 0).x).toBeLessThanOrEqual(STAGE.ground.x2);
+    expect(f(s, 0).stocks).toBe(3);
+  });
+  it("does not push a fighter in hitstop", () => {
+    let s = fight();
+    s = edit(s, 0, { x: 0, hitstop: 5 });
+    s = edit(s, 1, { x: 0 });
+    s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 0).x).toBe(0);
+    expect(f(s, 1).x).toBe(0);
+  });
+});
