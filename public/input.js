@@ -67,7 +67,7 @@ export class Input {
       const set = this.btnPointers[name];
       b.addEventListener("pointerdown", (e) => {
         e.preventDefault();
-        b.setPointerCapture?.(e.pointerId);
+        capture(b, e);
         set.add(e.pointerId);
         this.refreshTouchView();
       });
@@ -92,7 +92,7 @@ export class Input {
     zone.addEventListener("pointerdown", (e) => {
       if (this.stickId !== null) return;
       e.preventDefault();
-      zone.setPointerCapture?.(e.pointerId);
+      capture(zone, e);
       this.stickId = e.pointerId;
       this.base = { x: e.clientX, y: e.clientY };
       this.stick = { x: 0, y: 0 };
@@ -165,4 +165,12 @@ function el(tag, cls) {
   const e = document.createElement(tag);
   e.className = cls;
   return e;
+}
+
+function capture(node, e) {
+  try {
+    node.setPointerCapture(e.pointerId);
+  } catch {
+    // no active pointer (synthetic event): tracking by pointerId still works
+  }
 }

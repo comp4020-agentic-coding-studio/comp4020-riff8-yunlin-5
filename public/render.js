@@ -168,6 +168,9 @@ export class Renderer {
       tz = Math.max(0.55, Math.min(1.15, Math.min(W / w, H / h)));
       tx = (x1 + x2) / 2;
       ty = (y1 + y2) / 2;
+      // never let the camera leave the stage behind
+      tx = Math.max(-450, Math.min(450, tx));
+      ty = Math.max(-330, Math.min(-40, ty));
     }
     if (lobby) {
       // lobby: the stage sits to the right, clear of the panel
