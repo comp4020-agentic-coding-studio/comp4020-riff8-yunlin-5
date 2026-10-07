@@ -311,6 +311,8 @@ function ledgeAssist(f: FighterState, input: Input, stage: StageId): void {
   const left = f.x >= g.x1 - LEDGE_REACH && f.x <= g.x1;
   const right = f.x >= g.x2 && f.x <= g.x2 + LEDGE_REACH;
   if (!left && !right) return;
+  const away = left ? input.x <= -30 : input.x >= 30; // deliberately leaving never triggers it
+  if (away) return;
   const toward = left ? input.x > 0 : input.x < 0;
   if (!(f.vy >= 0 || toward)) return;
   f.y = g.y;

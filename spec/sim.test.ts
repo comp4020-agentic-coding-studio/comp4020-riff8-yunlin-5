@@ -768,3 +768,30 @@ describe("ink and dropped players", () => {
     expect(f(s, 1).inked).toBe(0);
   });
 });
+
+describe("ledge assist and deliberate falls", () => {
+  it("holding away from the stage never triggers the assist; neutral does", () => {
+    for (const side of [-1, 1]) {
+      const edge = side < 0 ? STAGE.ground.x1 : STAGE.ground.x2;
+      const tryStick = (x: number) => {
+        let s = fight();
+        s = edit(s, 0, { x: edge + side * 10, y: 20, vx: 0, vy: 2, grounded: false, jumpsLeft: 0 });
+        s = step(s, [IN(0, x), NO_INPUT]);
+        return f(s, 0).grounded;
+      };
+      expect(tryStick(side * 100)).toBe(false);
+      expect(tryStick(0)).toBe(true);
+      expect(tryStick(-side * 100)).toBe(true);
+    }
+  });
+  it("walking off the edge and holding away keeps falling to the blast zone", () => {
+    let s = fight();
+    s = edit(s, 0, { x: STAGE.ground.x2 - 5 });
+    let ko = false;
+    for (let i = 0; i < 300 && !ko; i++) {
+      s = step(s, [IN(0, 100), NO_INPUT]);
+      ko = has(s, "ko");
+    }
+    expect(ko).toBe(true);
+  });
+});
