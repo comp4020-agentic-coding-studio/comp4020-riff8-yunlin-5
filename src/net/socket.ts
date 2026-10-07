@@ -13,6 +13,15 @@ const TICK_MS = 1000 / 60;
 const MAX_CATCHUP_TICKS = 5;
 const PING_MS = 20_000;
 const MAX_SOCKETS = 400;
+const JOIN_TIMEOUT_MS = 10_000;
+
+function guard(what: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (err) {
+    console.error(`${what} failed`, err);
+  }
+}
 const MAX_BUFFERED = 512 * 1024;
 const INPUT_RATE = 120; // per second
 const OTHER_RATE = 20; // per second, all other types together
@@ -68,12 +77,12 @@ export function attachWs(server: Server): NetHandle {
         // malformed Origin: refuse
       }
       if (!ok) {
-        socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+        socket.end("HTTP/1.1 403 Forbidden\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
         return;
       }
     }
     if (wss.clients.size >= MAX_SOCKETS) {
-      socket.end("HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+      socket.end("HTTP/1.1 503 Service Unavailable\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
       return;
     }
     const { token } = sealToken(req.headers.cookie);
@@ -110,9 +119,22 @@ export function attachWs(server: Server): NetHandle {
       },
     };
 
+    // A socket that never says join is just holding a connection open.
+    const joinTimer = setTimeout(() => {
+      if (!joined) client.close(1008, "join timeout");
+    }, JOIN_TIMEOUT_MS);
     ws.on("error", () => {});
-    ws.on("pong", () => alive.set(ws, true));
-    ws.on("close", () => rooms.leave(client, performance.now()));
+    ws.on("pong", () =>
+      guard("pong", () => {
+        alive.set(ws, true);
+      }),
+    );
+    ws.on("close", () =>
+      guard("close", () => {
+        clearTimeout(joinTimer);
+        rooms.leave(client, performance.now());
+      }),
+    );
     ws.on("message", (data, isBinary) => {
       try {
         if (isBinary) return client.close(1003, "text only");
@@ -164,7 +186,7 @@ export function attachWs(server: Server): NetHandle {
 
   let acc = 0;
   let last = performance.now();
-  const loop = setInterval(() => {
+  const loop = setInterval(() => guard("loop", () => {
     const now = performance.now();
     acc += now - last;
     last = now;
@@ -175,19 +197,21 @@ export function attachWs(server: Server): NetHandle {
       n++;
     }
     if (acc > TICK_MS) acc = 0; // fell behind: drop the backlog rather than spiral
-  }, 4);
+  }), 4);
 
-  const reaper = setInterval(() => rooms.reap(performance.now()), 5000);
+  const reaper = setInterval(() => guard("reaper", () => rooms.reap(performance.now())), 5000);
 
   const heartbeat = setInterval(() => {
-    for (const ws of wss.clients) {
-      if (alive.get(ws) === false) {
-        ws.terminate();
-        continue;
+    guard("heartbeat", () => {
+      for (const ws of wss.clients) {
+        if (alive.get(ws) === false) {
+          ws.terminate();
+          continue;
+        }
+        alive.set(ws, false);
+        ws.ping();
       }
-      alive.set(ws, false);
-      ws.ping();
-    }
+    });
   }, PING_MS);
 
   return {

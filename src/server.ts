@@ -41,6 +41,7 @@ const ROOM_PATH = /^\/r\/([A-Za-z]{4})\/?$/;
 
 const server = createServer((req, res) => {
   try {
+    res.setHeader("X-Content-Type-Options", "nosniff");
     const url = new URL(req.url ?? "/", "http://internal");
     const { setCookie } = sealToken(req.headers.cookie);
     if (setCookie) res.setHeader("Set-Cookie", setCookie);
@@ -85,6 +86,10 @@ const net = attachWs(server);
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`mòdòu listening on 0.0.0.0:${PORT}`);
 });
+
+// Log and keep serving: one bad handler must not end every match in progress.
+process.on("uncaughtException", (err) => console.error("uncaughtException", err));
+process.on("unhandledRejection", (err) => console.error("unhandledRejection", err));
 
 process.on("SIGTERM", () => {
   net.close();
