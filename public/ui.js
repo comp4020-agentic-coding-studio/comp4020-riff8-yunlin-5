@@ -91,7 +91,7 @@ export class UI {
       "help",
       this.isTouch
         ? "Left thumb: move. Right thumb: jump, attack, ink, shield."
-        : "Move A D or arrows. Jump W, Up or Space. Attack J. Ink K. Shield L. Down drops through a stroke.",
+        : "Move A D or arrows. Jump W, Up or Space. Attack J. Ink K. Shield L. Down drops through a stroke. A gamepad works too: stick or d-pad, A jump, X attack, B ink, bumpers shield.",
     );
     p.append(this.helpEl);
 
