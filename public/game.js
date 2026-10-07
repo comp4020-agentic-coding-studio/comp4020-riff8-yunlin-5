@@ -55,6 +55,7 @@ const net = new Net({
     lobby = l;
     phase = l.phase;
     if (welcome && l.you !== undefined) welcome.slot = net.mySlot = l.you;
+    input.guest = l.youGuest != null;
     if (phase === "lobby" && prev !== "lobby") {
       net.clear();
       renderer.reset();
@@ -73,6 +74,8 @@ const ui = new UI(
   uiRoot,
   {
     pick: (fighter) => net.send({ t: "pick", fighter }),
+    pick1: (fighter) => net.send({ t: "pick", fighter, p: 1 }),
+    guest: (add) => net.send({ t: "guest", add }),
     stage: (id) => net.send({ t: "stage", id }),
     ready: (ready) => net.send({ t: "ready", ready }),
     cpu: (add) => net.send({ t: "cpu", add }),
@@ -157,7 +160,8 @@ function frame(now) {
 
   if (inMatch && now - lastSend >= 15) {
     lastSend = now;
-    net.sendInput(input.poll());
+    net.sendInput(input.poll(0));
+    if (input.guest) net.sendInput(input.poll(1), 1);
   }
   requestAnimationFrame(frame);
 }

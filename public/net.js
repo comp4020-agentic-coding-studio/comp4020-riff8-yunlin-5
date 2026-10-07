@@ -15,7 +15,7 @@ export class Net {
     this.rtt = 0;
     this.pings = new Map();
     this.pingId = 0;
-    this.seq = 0;
+    this.seqs = [0, 0];
     this.closedForGood = false;
     this.retry = 0;
     this.mySlot = null; // set by game.js: which fighter is ours
@@ -78,8 +78,11 @@ export class Net {
     if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(obj));
   }
 
-  sendInput(inp) {
-    this.send({ t: "input", seq: this.seq++ & 0x3fffffff, b: inp.b, x: inp.x, y: inp.y });
+  // p = 1 sends for the local guest seat.
+  sendInput(inp, p = 0) {
+    const m = { t: "input", seq: this.seqs[p]++ & 0x3fffffff, b: inp.b, x: inp.x, y: inp.y };
+    if (p === 1) m.p = 1;
+    this.send(m);
   }
 
   ping() {

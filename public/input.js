@@ -1,20 +1,22 @@
 // Keyboard and multi-touch -> { b, x, y } (b: JUMP 1, ATTACK 2, SPECIAL 4, SHIELD 8).
 
 const BTN = { jump: 1, attack: 2, special: 4, shield: 8 };
-const KEYS = {
-  KeyA: "left", ArrowLeft: "left",
-  KeyD: "right", ArrowRight: "right",
-  KeyW: "jump", ArrowUp: "jump", Space: "jump",
-  KeyS: "down", ArrowDown: "down",
-  KeyJ: "attack", KeyK: "special", KeyL: "shield",
+// Raw key codes each player uses. Without a guest the arrows also drive P1.
+const P1 = { left: ["KeyA"], right: ["KeyD"], jump: ["KeyW", "Space"], down: ["KeyS"], attack: ["KeyJ"], special: ["KeyK"], shield: ["KeyL"] };
+const P1_ARROWS = { left: ["ArrowLeft"], right: ["ArrowRight"], jump: ["ArrowUp"], down: ["ArrowDown"] };
+const P2 = {
+  left: ["ArrowLeft"], right: ["ArrowRight"], jump: ["ArrowUp"], down: ["ArrowDown"],
+  attack: ["Comma"], special: ["Period"], shield: ["Slash", "ShiftRight"],
 };
+const KNOWN = new Set([...Object.values(P1), ...Object.values(P2)].flat());
 
 export const isTouchDevice = () =>
   /[?&]touch\b/.test(location.search) || matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
 
 export class Input {
   constructor(touchRoot) {
-    this.keys = new Set();
+    this.codes = new Set();
+    this.guest = false; // set by game.js while a second local player is seated
     this.active = false;
     this.touchRoot = touchRoot;
     this.btnPointers = { jump: new Set(), attack: new Set(), special: new Set(), shield: new Set() };
@@ -36,7 +38,7 @@ export class Input {
   }
 
   releaseAll() {
-    this.keys.clear();
+    this.codes.clear();
     for (const k in this.btnPointers) this.btnPointers[k].clear();
     this.stickId = null;
     this.stick = { x: 0, y: 0 };
@@ -44,11 +46,20 @@ export class Input {
   }
 
   key(e, down) {
-    const a = KEYS[e.code];
-    if (!a || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!KNOWN.has(e.code) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (this.active) e.preventDefault();
-    if (down) this.keys.add(a);
-    else this.keys.delete(a);
+    if (down) this.codes.add(e.code);
+    else this.codes.delete(e.code);
+  }
+
+  // Held keys for one player as { left, right, down, jump, attack, special, shield }.
+  keysFor(player) {
+    const maps = player === 1 ? [P2] : this.guest ? [P1] : [P1, P1_ARROWS];
+    const out = {};
+    for (const name of ["left", "right", "down", "jump", "attack", "special", "shield"]) {
+      out[name] = maps.some((m) => (m[name] || []).some((c) => this.codes.has(c)));
+    }
+    return out;
   }
 
   buildTouch() {
@@ -140,7 +151,7 @@ export class Input {
   }
 
   // First connected pad wins; no pad (or no Gamepad API) is simply no input.
-  pollPad() {
+  pollPad(which = 0) {
     const out = { b: 0, x: 0, y: 0 };
     let pads;
     try {
@@ -148,8 +159,9 @@ export class Input {
     } catch {
       return out;
     }
-    for (const p of pads ?? []) {
-      if (!p || !p.connected) continue;
+    // P1 uses the first connected pad; the guest uses the second (and nothing if there is only one)
+    const live = [...(pads ?? [])].filter((p) => p && p.connected);
+    for (const p of live.slice(which, which + 1)) {
       const bt = (i) => !!p.buttons[i]?.pressed;
       let ax = p.axes[0] || 0;
       let ay = p.axes[1] || 0;
@@ -179,27 +191,28 @@ export class Input {
     return out;
   }
 
-  poll() {
-    const k = this.keys;
-    let x = (k.has("right") ? 100 : 0) - (k.has("left") ? 100 : 0);
-    let y = k.has("down") ? 100 : 0;
+  poll(player = 0) {
+    const k = this.keysFor(player);
+    let x = (k.right ? 100 : 0) - (k.left ? 100 : 0);
+    let y = k.down ? 100 : 0;
     let b = 0;
-    if (k.has("jump")) b |= BTN.jump;
-    if (k.has("attack")) b |= BTN.attack;
-    if (k.has("special")) b |= BTN.special;
-    if (k.has("shield")) b |= BTN.shield;
-    for (const n in BTN) if (this.btnPointers[n].size) b |= BTN[n];
-    const g = this.pollPad();
+    if (k.jump) b |= BTN.jump;
+    if (k.attack) b |= BTN.attack;
+    if (k.special) b |= BTN.special;
+    if (k.shield) b |= BTN.shield;
+    const g = this.pollPad(player);
     b |= g.b;
     if (Math.abs(g.x) > Math.abs(x)) x = g.x;
     if (Math.abs(g.y) > Math.abs(y)) y = g.y;
-    const s = this.stick;
-    const mag = Math.hypot(s.x, s.y);
-    if (mag > 0.2) {
-      const sx = Math.round(Math.max(-1, Math.min(1, s.x)) * 100);
-      const sy = Math.round(Math.max(-1, Math.min(1, s.y)) * 100);
-      if (Math.abs(sx) > Math.abs(x)) x = sx;
-      if (Math.abs(sy) > Math.abs(y)) y = sy;
+    if (player === 0) {
+      for (const n in BTN) if (this.btnPointers[n].size) b |= BTN[n];
+      const s = this.stick;
+      if (Math.hypot(s.x, s.y) > 0.2) {
+        const sx = Math.round(Math.max(-1, Math.min(1, s.x)) * 100);
+        const sy = Math.round(Math.max(-1, Math.min(1, s.y)) * 100);
+        if (Math.abs(sx) > Math.abs(x)) x = sx;
+        if (Math.abs(sy) > Math.abs(y)) y = sy;
+      }
     }
     return { b, x, y };
   }
