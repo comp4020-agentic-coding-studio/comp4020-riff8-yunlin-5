@@ -756,3 +756,15 @@ describe("match time limit", () => {
     expect(go()).toBe(go());
   });
 });
+
+describe("ink and dropped players", () => {
+  it("a fighter who drops loses the ink boost and doesn't return inked", () => {
+    let s = fight();
+    s = edit(s, 1, { inked: 400 });
+    s = step(s, [NO_INPUT, null]);
+    expect(f(s, 1).inked).toBe(0);
+    s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(has(s, "back")).toBe(true);
+    expect(f(s, 1).inked).toBe(0);
+  });
+});
