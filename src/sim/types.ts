@@ -185,6 +185,7 @@ export interface MatchState {
   rng: number; // uint32 PRNG state (mulberry32 or similar), the only randomness
   fighters: (FighterState | null)[]; // length MAX_FIGHTERS, indexed by slot
   projectiles: ProjectileState[];
+  fightTicksLeft: number; // counts down during "fight" only; 0 ends the match
   stage: StageId;
   nextId: number;
   items: ItemState[];
