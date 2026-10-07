@@ -43,6 +43,10 @@ const net = new Net({
     ui.setStatus("");
     ui.hideBlocked();
   },
+  resume: () => {
+    ui.setStatus("Connecting...");
+    renderer.reset();
+  },
   close: (final) => {
     if (!final) ui.setStatus("Connection lost. Reconnecting...");
   },
@@ -119,6 +123,10 @@ const ui = new UI(
 );
 ui.setStatus("Connecting...");
 net.connect();
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && phase === "match") net.suspend();
+  else if (!document.hidden) net.resume();
+});
 
 // Lobby backdrop: the players standing on the stage, no snapshot needed.
 function lobbyView() {
