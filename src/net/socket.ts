@@ -176,6 +176,8 @@ export function attachWs(server: Server): NetHandle {
             return client.room?.setReady(client, msg.ready);
           case "cpu":
             return client.room?.setCpu(client, msg.add);
+          case "stage":
+            return client.room?.setStage(client, msg.id);
           case "ping":
             return client.send(JSON.stringify({ t: "pong", id: msg.id }));
         }
