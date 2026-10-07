@@ -10,6 +10,7 @@ export type ClientMsg =
   | { t: "cpu"; add: boolean }
   | { t: "stage"; id: StageId }
   | { t: "guest"; add: boolean }
+  | { t: "replay"; stop: boolean; speed: 1 | 2 | 4 }
   | { t: "input"; seq: number; p: 0 | 1; b: number; x: number; y: number }
   | { t: "ping"; id: number };
 
@@ -44,6 +45,10 @@ export function parseClientMessage(raw: string): ClientMsg | null {
       return typeof v.ready === "boolean" ? { t: "ready", ready: v.ready } : null;
     case "cpu":
       return typeof v.add === "boolean" ? { t: "cpu", add: v.add } : null;
+    case "replay":
+      return (v.stop === undefined || typeof v.stop === "boolean") && (v.speed === undefined || v.speed === 1 || v.speed === 2 || v.speed === 4)
+        ? { t: "replay", stop: v.stop === true, speed: (v.speed ?? 1) as 1 | 2 | 4 }
+        : null;
     case "guest":
       return typeof v.add === "boolean" ? { t: "guest", add: v.add } : null;
     case "stage":
@@ -89,7 +94,7 @@ export interface SnapFighter {
 
 export const COUNTDOWN_TICKS = 120;
 
-export function buildSnap(state: MatchState, glyphs: readonly string[], events: readonly SimEvent[]): string {
+export function buildSnap(state: MatchState, glyphs: readonly string[], events: readonly SimEvent[], replay = false): string {
   const fighters: SnapFighter[] = [];
   for (const f of state.fighters) {
     if (!f) continue;
@@ -120,6 +125,7 @@ export function buildSnap(state: MatchState, glyphs: readonly string[], events: 
   }
   return JSON.stringify({
     t: "snap",
+    ...(replay ? { replay: true } : {}),
     tick: state.tick,
     phase: state.phase,
     countdown: state.phase === "countdown" ? Math.max(0, COUNTDOWN_TICKS - state.phaseTick) : 0,
