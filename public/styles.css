@@ -591,3 +591,22 @@ noscript a {
 .history a {
   color: #00e;
 }
+
+.mute {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  background: rgb(243 239 228 / 70%);
+  color: var(--ink-soft);
+  border: 1px solid rgb(31 27 22 / 35%);
+  border-radius: 2px;
+  cursor: pointer;
+  z-index: 6;
+}
+
+.mute:focus-visible {
+  outline: 2px solid var(--seal);
+}
