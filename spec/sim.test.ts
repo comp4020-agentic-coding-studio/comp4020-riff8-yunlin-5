@@ -824,3 +824,36 @@ describe("push-apart", () => {
     expect(f(s, 1).x).toBe(0);
   });
 });
+
+describe("dropping mid-launch", () => {
+  it("costs a stock at once, credits the attacker, then enters grace", () => {
+    let s = fight();
+    s = edit(s, 1, { hitstun: 30, lastHitBy: 0, lastHitTick: s.tick, action: "hitstun", x: 500, y: -100 });
+    s = step(s, [NO_INPUT, null]);
+    expect(f(s, 1).stocks).toBe(2);
+    expect(f(s, 1).falls).toBe(1);
+    expect(f(s, 0).kos).toBe(1);
+    expect(s.events.find((e) => e.type === "ko")).toMatchObject({ slot: 1, by: 0 });
+    expect(has(s, "drop")).toBe(true);
+    expect(f(s, 1).absentSince).not.toBeNull();
+    s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(has(s, "back")).toBe(true);
+    expect(f(s, 1).stocks).toBe(2);
+    expect(f(s, 1).invuln).toBeGreaterThan(0);
+  });
+  it("on the last stock puts the fighter out with no grace, and the match can end", () => {
+    let s = fight(2, 1);
+    s = edit(s, 1, { hitstun: 30, lastHitBy: 0, lastHitTick: s.tick, action: "hitstun" });
+    s = step(s, [NO_INPUT, null]);
+    expect(f(s, 1).stocks).toBe(0);
+    expect(f(s, 1).absentSince).toBeNull();
+    expect(s.phase).toBe("ended");
+    expect(s.winner).toBe(0);
+  });
+  it("outside hitstun loses nothing", () => {
+    let s = fight();
+    s = step(s, [NO_INPUT, null]);
+    expect(f(s, 1).stocks).toBe(3);
+    expect(has(s, "ko")).toBe(false);
+  });
+});
