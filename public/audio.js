@@ -117,6 +117,12 @@ export class Sfx {
         this.hiss("bandpass", 700, 2600, 0.09, 0.3);
         this.tone("sine", 520, 880, 0.08, 0.12);
         break;
+      case "glug":
+        this.tone("sine", 320, 170, 0.09, 0.3);
+        this.tone("sine", 200, 420, 0.11, 0.28, 0.1);
+        this.tone("sine", 260, 140, 0.1, 0.2, 0.22);
+        this.hiss("lowpass", 900, 250, 0.25, 0.12);
+        break;
       case "tick":
         this.tone("sine", 660, 660, 0.07, 0.25);
         break;
@@ -138,6 +144,7 @@ export class Sfx {
   event(ev) {
     if (ev.type === "hit") this.play(ev.shielded ? "block" : "hit", ev.kb || 0);
     else if (ev.type === "ko") this.play("ko");
+    else if (ev.type === "pickup") this.play("glug");
     else if (ev.type === "jump") this.play("jump");
     else if (ev.type === "special") this.play("special");
     else if (ev.type === "start") this.play("start");
