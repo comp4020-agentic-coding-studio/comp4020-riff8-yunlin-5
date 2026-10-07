@@ -4,6 +4,7 @@ import { randomBytes, randomInt } from "node:crypto";
 import type { FighterId, Input, MatchState, SimEvent, Slot } from "../sim/index.ts";
 import { createMatch, cpuInput, step, FIGHTERS, NO_INPUT, STAGE } from "../sim/index.ts";
 import { recordMatch } from "../db.ts";
+import { sealGlyph } from "../seal.ts";
 import { buildResults, buildSnap } from "./protocol.ts";
 
 export const MAX_ROOMS = 50;
@@ -14,7 +15,10 @@ const EMPTY_ROOM_MS = 2 * 60 * 1000;
 // A client that stops sending input (frozen tab) shouldn't hold its last
 // stick position forever.
 const STALE_INPUT_TICKS = 30;
-const CPU_GLYPH = "機";
+// Must match GLYPHS in src/seal.ts, in the same order: a seat whose own glyph
+// is already shown by another seat takes the next unused one from here.
+const GLYPH_POOL = ["鑑", "賞", "藏", "觀", "閱", "記", "題", "珍", "玩", "守", "傳", "校"];
+const CPU_GLYPHS = ["機", "械", "偶", "影"];
 const CODE_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I, no O
 
 export interface Client {
@@ -69,10 +73,22 @@ export class Room {
     return slots.find((s) => this.seats[s] === null) ?? null;
   }
 
+  private uniqueGlyph(pool: readonly string[], wanted: string): string {
+    const taken = new Set(this.seats.map((x) => x?.glyph));
+    const start = Math.max(0, pool.indexOf(wanted));
+    for (let i = 0; i < pool.length; i++) {
+      const g = pool[(start + i) % pool.length]!;
+      if (!taken.has(g)) return g;
+    }
+    return wanted;
+  }
+
   private seat(client: Client, slot: Slot): void {
+    const glyph = this.uniqueGlyph(GLYPH_POOL, sealGlyph(client.token));
+    client.glyph = glyph;
     this.seats[slot] = {
       token: client.token,
-      glyph: client.glyph,
+      glyph,
       fighter: "wanderer",
       ready: false,
       cpu: false,
@@ -81,24 +97,32 @@ export class Room {
     client.slot = slot;
   }
 
-  /** Returns "room_full" if it can't take another spectator or fighter. The caller sends welcome, then broadcastLobby(). */
+  /**
+   * Returns "room_full" if it can't take another spectator or fighter. The
+   * caller sends welcome, then broadcastLobby(). A token that already holds a
+   * seat takes it over (docs D5): the old socket, if any, is told and closed.
+   */
   join(client: Client): "room_full" | { rejoined: boolean } {
-    const alreadyHere = [...this.clients].some((c) => c.token === client.token);
-    if (this.phase === "match" && !alreadyHere) {
-      for (const s of slots) {
-        const seat = this.seats[s];
-        const f = this.state?.fighters[s];
-        if (seat && !seat.cpu && seat.client === null && seat.token === client.token && f && !f.forfeited) {
-          seat.client = client;
-          client.slot = s;
-          client.lastInput = NO_INPUT; // a non-null input is what brings the fighter back
-          client.lastInputTick = this.state!.tick;
-          this.attach(client);
-          return { rejoined: true };
-        }
+    for (const s of slots) {
+      const seat = this.seats[s];
+      if (!seat || seat.cpu || seat.token !== client.token) continue;
+      const old = seat.client;
+      if (old && old !== client) {
+        this.clients.delete(old);
+        old.room = null;
+        old.slot = null;
+        old.send(JSON.stringify({ t: "error", code: "replaced", message: "This seal joined from somewhere else." }));
+        old.close(4000, "replaced");
       }
+      seat.client = client;
+      client.slot = s;
+      client.glyph = seat.glyph;
+      client.lastInput = NO_INPUT; // a non-null input is what brings an absent fighter back
+      client.lastInputTick = this.state?.tick ?? 0;
+      this.attach(client);
+      return { rejoined: this.phase === "match" };
     }
-    const slot = this.phase === "lobby" && !alreadyHere ? this.freeSlot() : null;
+    const slot = this.phase === "lobby" ? this.freeSlot() : null;
     if (slot === null && this.spectators >= MAX_SPECTATORS) return "room_full";
     if (slot !== null) this.seat(client, slot);
     else client.slot = null;
@@ -150,7 +174,7 @@ export class Room {
     if (add) {
       const slot = this.freeSlot();
       if (slot === null) return;
-      this.seats[slot] = { token: "", glyph: CPU_GLYPH, fighter: "wanderer", ready: true, cpu: true, client: null };
+      this.seats[slot] = { token: "", glyph: this.uniqueGlyph(CPU_GLYPHS, CPU_GLYPHS[0]!), fighter: "wanderer", ready: true, cpu: true, client: null };
     } else {
       for (const s of [...slots].reverse()) {
         if (this.seats[s]?.cpu) {

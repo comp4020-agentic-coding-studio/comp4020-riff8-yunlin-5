@@ -10,6 +10,9 @@ mkdirSync(dirname(DB_PATH), { recursive: true });
 
 export const db = new DatabaseSync(DB_PATH);
 
+// The Colophon table is gone: its rows carried seal tokens.
+db.exec("DROP TABLE IF EXISTS colophons");
+
 // Match history: glyphs and fighter ids only, never a seal token.
 db.exec(`
   CREATE TABLE IF NOT EXISTS matches (
@@ -42,6 +45,7 @@ export interface MatchRecord {
 const insert = db.prepare(
   "INSERT INTO matches (finished_at, duration_ticks, winner_glyph, winner_fighter, players_json) VALUES (?, ?, ?, ?, ?)",
 );
+const prune = db.prepare("DELETE FROM matches WHERE id <= (SELECT MAX(id) FROM matches) - 1000");
 const selectRecent = db.prepare("SELECT * FROM matches ORDER BY id DESC LIMIT ?");
 
 export function recordMatch(
@@ -50,6 +54,7 @@ export function recordMatch(
   players: MatchPlayer[],
 ): void {
   insert.run(Date.now(), durationTicks, winner?.glyph ?? null, winner?.fighter ?? null, JSON.stringify(players));
+  prune.run();
 }
 
 export function recentMatches(limit: number): MatchRecord[] {
