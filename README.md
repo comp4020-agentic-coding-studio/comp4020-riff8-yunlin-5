@@ -64,8 +64,7 @@ a result. Rooms don't persist; only the history does.
 deterministic, a drop followed by a return inside 15 seconds gets the fighter
 back, 900 ticks of silence ends in forfeit, bad or oversized WebSocket
 messages are rejected without taking the server down, and the home page
-explains itself without JavaScript. The rule that colour identifies a player and
-nothing decorative is added lives in `CLAUDE.md`, kept by reading, not by a test.
+explains itself without JavaScript. The colour rule in `CLAUDE.md` (a slot's ink identifies a player, vermilion asks for action or attention, links are blue, nothing else is coloured) is kept by reading, not by a test.
 Whether the game is fun, whether the fighters feel different from one another
 and whether 15 seconds is the right grace on a phone in a real room are for
 people to judge by playing.
