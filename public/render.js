@@ -91,7 +91,7 @@ export class Renderer {
           vy: Math.sin(a) * sp - 1,
           life: 0,
           max: 24 + Math.random() * 26,
-          r: 1.5 + Math.random() * (2 + kb / 30),
+          r: 2.2 + Math.random() * (2.5 + kb / 25),
           c: Math.random() < 0.3 ? col(ev.attacker) : INK,
         });
       }
