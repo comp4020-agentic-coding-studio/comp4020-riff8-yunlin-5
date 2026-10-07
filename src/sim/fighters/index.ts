@@ -5,13 +5,13 @@ import type { FighterDef, FighterId } from "../types.ts";
 
 // 墨 Great Brush: heavy, slow, long reach, high knockback.
 const brush: FighterDef = {
-  id: "brush", name: "Great Brush 巨筆", weight: 125, walkSpeed: 3.2, airSpeed: 3, jumpVel: 10.5,
+  id: "brush", name: "Great Brush 巨筆", weight: 145, walkSpeed: 3.5, airSpeed: 3.2, jumpVel: 10.5,
   doubleJumpVel: 9.5, gravity: 0.6, maxFall: 11, fastFall: 15, width: 46, height: 84,
   moves: {
-    jab: { frames: 20, hitboxes: [{ start: 5, end: 9, x: 56, y: -44, r: 20, damage: 6, base: 22, growth: 70, angle: 35 }] },
-    strong: { frames: 40, hitboxes: [{ start: 15, end: 21, x: 70, y: -46, r: 30, damage: 17, base: 38, growth: 115, angle: 40 }] },
-    aerial: { frames: 30, hitboxes: [{ start: 7, end: 17, x: 54, y: -42, r: 32, damage: 12, base: 24, growth: 95, angle: 45 }] },
-    special: { frames: 56, hitboxes: [{ start: 22, end: 28, x: 64, y: -24, r: 34, damage: 14, base: 34, growth: 105, angle: 65 }] },
+    jab: { frames: 17, hitboxes: [{ start: 4, end: 9, x: 58, y: -44, r: 22, damage: 8, base: 24, growth: 75, angle: 35 }] },
+    strong: { frames: 34, hitboxes: [{ start: 12, end: 19, x: 72, y: -46, r: 32, damage: 19, base: 42, growth: 125, angle: 40 }] },
+    aerial: { frames: 26, hitboxes: [{ start: 6, end: 17, x: 54, y: -42, r: 34, damage: 12, base: 24, growth: 95, angle: 45 }] },
+    special: { frames: 48, hitboxes: [{ start: 18, end: 25, x: 64, y: -24, r: 34, damage: 14, base: 34, growth: 105, angle: 65 }] },
   },
 };
 
