@@ -166,6 +166,8 @@ export function attachWs(server: Server): NetHandle {
             return client.close(1008, "already joined");
           case "pick":
             return client.room?.pick(client, msg.fighter, msg.p);
+          case "replay":
+            return msg.stop ? client.room?.stopReplay(client) : client.room?.startReplay(client, msg.speed);
           case "guest":
             return client.room?.setGuest(client, msg.add);
           case "ready":
