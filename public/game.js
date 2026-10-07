@@ -58,6 +58,7 @@ const net = new Net({
       net.clear();
       renderer.reset();
     }
+    if (l.stageDef) renderer.setStage(l.stageDef);
     ui.setLobby(l);
   },
   end: (e) => {
@@ -71,6 +72,7 @@ const ui = new UI(
   uiRoot,
   {
     pick: (fighter) => net.send({ t: "pick", fighter }),
+    stage: (id) => net.send({ t: "stage", id }),
     ready: (ready) => net.send({ t: "ready", ready }),
     cpu: (add) => net.send({ t: "cpu", add }),
   },
@@ -82,7 +84,7 @@ net.connect();
 // Lobby backdrop: the players standing on the stage, no snapshot needed.
 function lobbyView() {
   if (!lobby || !welcome) return null;
-  const sp = welcome.stage.spawns;
+  const sp = renderer.stage.spawns;
   const fighters = lobby.players.map((p) => ({
     slot: p.slot,
     fighter: p.fighter,

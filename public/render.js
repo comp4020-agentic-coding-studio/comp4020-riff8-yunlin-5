@@ -63,8 +63,13 @@ export class Renderer {
     this.scale = c.width / this.W;
   }
 
+  // Takes a full StageDef; the same geometry again keeps the existing object so
+  // stage.js doesn't rebuild its cache on every lobby message.
   setStage(s) {
-    this.stage = s || DEFAULT_STAGE;
+    if (!s) return;
+    const sig = (x) => JSON.stringify([x.id, x.ground, x.platforms, x.blast, x.spawns]);
+    if (this.stage && sig(this.stage) === sig(s)) return;
+    this.stage = s;
   }
 
   reset() {

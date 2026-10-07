@@ -4,6 +4,11 @@
 import { drawFighter, FIGHTER_INFO } from "./art/fighters.js";
 import { SLOT_COLOURS } from "./render.js";
 
+// Line sketches for the stage picker: ground and platforms in world units.
+const SKETCH = {
+  riverbank: { g: [-320, 320], p: [[-230, -90, -110], [90, 230, -110], [-70, 70, -210]] },
+  pinecliff: { g: [-230, 230], p: [[-230, -120, -80], [-40, 230, -150]] },
+};
 const IDS = ["brush", "carver", "blot", "wanderer"];
 
 function h(tag, cls, text) {
@@ -71,6 +76,11 @@ export class UI {
       this.pickEl.append(card);
     }
     p.append(this.pickEl);
+
+    this.stageRow = h("div", "stages");
+    this.stageRow.hidden = true;
+    this.stageBtns = {};
+    p.append(this.stageRow);
 
     const row = h("div", "btn-row");
     this.readyBtn = h("button", "btn primary", "Ready");
@@ -218,6 +228,7 @@ export class UI {
       c.card.disabled = spectator;
       this.paintCard(c.cv, id, me ? me.slot : 0);
     }
+    this.drawStages(l, spectator);
     this.readyBtn.disabled = spectator;
     this.readyBtn.textContent = me?.ready ? "Not ready" : "Ready";
     this.readyBtn.classList.toggle("on", !!me?.ready);
@@ -232,6 +243,69 @@ export class UI {
     else note = "Waiting for everyone to be ready.";
     if (l.spectators) note += ` ${l.spectators} watching.`;
     this.noteEl.textContent = note;
+  }
+
+  drawStages(l, spectator) {
+    const list = l.stages;
+    if (!Array.isArray(list) || list.length < 2) {
+      this.stageRow.hidden = true;
+      return;
+    }
+    this.stageRow.hidden = false;
+    for (const st of list) {
+      let b = this.stageBtns[st.id];
+      if (!b) {
+        const card = h("button", "stage-card");
+        card.type = "button";
+        const cv = h("canvas", "stage-art");
+        cv.width = 120;
+        cv.height = 56;
+        const nm = h("span", "card-name", st.name);
+        card.append(cv, nm);
+        card.onclick = () => this.on.stage(st.id);
+        this.paintStage(cv, st.id);
+        this.stageRow.append(card);
+        b = this.stageBtns[st.id] = card;
+      }
+      b.classList.toggle("on", st.id === l.stage);
+      b.disabled = spectator;
+    }
+  }
+
+  paintStage(cv, id) {
+    const sk = SKETCH[id];
+    const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, 120, 56);
+    ctx.strokeStyle = "#1f1b16";
+    ctx.fillStyle = "#1f1b16";
+    ctx.lineCap = "round";
+    const sc = 0.17;
+    const X = (x) => 60 + x * sc;
+    const Y = (y) => 40 + y * sc;
+    if (!sk) {
+      ctx.fillRect(20, 40, 80, 4);
+      return;
+    }
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(X(sk.g[0]), Y(0));
+    ctx.lineTo(X(sk.g[1]), Y(0));
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(X(sk.g[0]) + 2, Y(0));
+    ctx.lineTo(X(sk.g[0] + 40), Y(0) + 12);
+    ctx.lineTo(X(sk.g[1] - 40), Y(0) + 12);
+    ctx.lineTo(X(sk.g[1]) - 2, Y(0));
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 2;
+    for (const [a, b, y] of sk.p) {
+      ctx.beginPath();
+      ctx.moveTo(X(a), Y(y));
+      ctx.lineTo(X(b), Y(y));
+      ctx.stroke();
+    }
   }
 
   paintCard(cv, id, slot) {
