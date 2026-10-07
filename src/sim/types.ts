@@ -124,6 +124,9 @@ export interface FighterState {
   prevButtons: number; // for edge detection
   absentSince: number | null; // tick its player dropped; null while present (docs/decisions/0001)
   forfeited: boolean; // grace ran out: out of the match, stocks 0
+  prevStickY: number; // for edge detection of drop-through
+  lastHitBy: Slot | null; // for KO credit
+  lastHitTick: number;
   // match stats
   kos: number;
   falls: number;
