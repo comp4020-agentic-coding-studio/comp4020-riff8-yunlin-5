@@ -35,27 +35,25 @@ agent was directed, not for what anyone owes.
 
 # Your harness
 
-Rules for working on Colophon, derived from what `README.md` argues good means
-here. If a change would break one of these, the argument in `README.md` is
-what has to change first, in the same commit.
+Rules for working on 墨鬥 Mòdòu, derived from what `README.md` argues good
+means here. If a change would break one, the argument in `README.md` changes
+first, in the same commit.
 
-- Never add an account, profile, avatar, name field, like, reply, thread or
-  notification. A visitor is their seal (an anonymous per-browser token) and
-  nothing else.
-- Never add a way to edit or delete a colophon after it's written, and never
-  auto-truncate one that's too long — reject it at the boundary and ask the
-  visitor to shorten it themselves. Silent mutation of what someone wrote is
-  worse than a rejected submission.
-- Every colophon body is untrusted, persisted, and re-rendered as HTML to
-  every future visitor: it must always go through `escapeHtml` before it
-  reaches a template string. No new template may interpolate user text
-  unescaped.
-- The core interaction (reading the scroll, writing a colophon) must keep
-  working with JavaScript disabled — a plain HTML form posting to the server.
-  Anything that needs a script is a progressive enhancement on top, not a
-  replacement.
-- If the accent colour (`--seal`) gets a second meaning beyond "this colophon
-  is yours," that's a sign the design has drifted, not a sign to add a second
-  colour.
+- No accounts, names, avatars or profiles. A player is their seal glyph,
+  derived from an anonymous per-browser cookie, and nothing else. Never send
+  a token over the wire.
+- Nothing a user types is rendered; there is no free text. If free text is
+  ever added, it goes through `escapeHtml` before reaching any template.
+- Every WebSocket message is untrusted: validate type and ranges, cap it at
+  1 KB, rate-limit it, and close sockets that misbehave. No exception may
+  escape a handler or the game loop.
+- `src/sim/` stays pure and deterministic: no `Date`, `Math.random` or I/O.
+- `/` explains itself without JavaScript.
+- One accent colour, vermilion `--seal`, the colour of the seal stamp. Don't
+  add a second colour; if `--seal` starts meaning several unrelated things,
+  the design has drifted. Grep for every use before claiming otherwise.
+- A player who drops gets the 15 s grace in
+  `docs/decisions/0001-grace-then-forfeit-on-drop.md`. Change that file
+  before changing the behaviour.
 - When a check finds a real bug, the fix is a new `spec/` test or a rule in
-  this file, not just a patched line with no trace of what went wrong.
+  this file, not just a patched line.
