@@ -386,7 +386,8 @@ export class Room {
         seat.latched = 0;
       }
     }
-    this.recording?.push(inputs);
+    // Past its byte cap a match simply has no replay; the match itself carries on.
+    if (this.recording && !this.recording.push(inputs)) this.recording = null;
     const next = step(state, inputs);
     this.state = next;
     for (const e of next.events) this.pending.push(e);
@@ -405,8 +406,10 @@ export class Room {
       JSON.stringify({ t: "end", winner: state.winner, results, durationTicks: state.tick }),
     );
     const w = results.find((r) => r.slot === state.winner);
+    // A match everyone walked out of isn't a result worth keeping.
+    const abandoned = !this.seats.some((seat) => seat && !seat.cpu && seat.client !== null);
     try {
-      recordMatch(
+      if (!abandoned) recordMatch(
         state.tick,
         w ? { glyph: w.glyph, fighter: w.fighter } : null,
         results.map((r) => ({ glyph: r.glyph, fighter: r.fighter, kos: r.kos, falls: r.falls, placement: r.placement })),
