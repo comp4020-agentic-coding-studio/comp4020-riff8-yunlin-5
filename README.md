@@ -1,58 +1,81 @@
-# Colophon
+# 墨鬥 Mòdòu
 
-A handscroll painting stays open on the page. Under it, in the order they were
-written, sit the notes strangers have left in its margin — one line each, no
-account, no name, nothing that can be edited or deleted once it's there. It is
-alive the way a scroll is alive: everyone who has ever unrolled it left
-something behind, and the next person can still find it.
+An online fighting game for up to four people in one room, each on their own
+phone or laptop, all on one live URL. Brush-ink fighters brawl on a painted
+handscroll stage until one is left standing. The name is "ink contest"
+(墨 ink, 鬥 to vie), and puns on 墨斗, the carpenter's ink line that snaps one
+straight black mark onto wood. Nobody has an account, a name or a profile:
+each player is a seal glyph, and that is all anyone else sees of them.
 
 ## What good means here
 
-Chinese handscrolls were never finished when the painter set the brush down.
-Later owners and admirers kept adding their own inscriptions and seals after
-the image, sheet by sheet, so that a scroll only a foot square in its painted
-part could grow twenty feet long from six centuries of appended commentary —
-the [Met's history of the format](https://www.metmuseum.org/essays/chinese-handscrolls)
-calls this "a continuous dialogue" between the work and everyone who has since
-sat with it. That is the shape of multi-user, real-time and persistent I
-wanted: not a feed, but one object that a small, unhurried stream of people
-add to, permanently, leaving a trace the next visitor can actually find.
+The people are in the room. They are not strangers on a ladder; they are
+sitting a metre apart, looking at each other as much as at a screen. That
+sets the bar. The screen's job is to be legible at a glance, so a glance from
+across the sofa tells you whose fighter is whose, how hurt they are and who
+just got launched. The game's job is to be fair enough to laugh about: a
+loss should be funny rather than feel stolen, which is why simultaneous hits
+trade and nobody gets a win from a technicality. Latency has to stay well
+under a second, because a delay that long is the difference between "I hit
+you" and "the game says I did". The server decides everything and the clients
+smooth over the gaps by drawing slightly in the past.
 
-Three other things I read while deciding what small and good looks like here:
+The part that took the most thought is the dropped phone. Phones drop, and a
+match for four shouldn't be wrecked because one of them did. A player who
+vanishes gets a grace period to come back as themselves, and the room can see
+it happening. That falls out of the world this repo already had: a handscroll
+is a shared object that many people have marked over time, each with a seal
+and no biography. [Bernie DeKoven's book page](https://www.deepfun.com/fun-store/the-well-played-game/)
+quotes readers on the same idea, that "the point of the game is the valuing
+of the other people you share it with". Presence without identity is enough
+to do that: the same seal coming back is the same person.
 
-- Robin Sloan's [_An app can be a home-cooked meal_](https://www.robinsloan.com/notes/home-cooked-app/)
-  argues the best case for a tiny app is never that it will grow, but that it
-  is finished, sovereign and answers only to the few people it was built for.
-  This app answers to whoever writes in the margin, not to a growth number.
-- [Hundred Rabbits](https://sourcehut.org/blog/2021-12-08-100-rabbits-interview/),
-  who build their own software from a sailboat, say "if we can use less
-  technology to solve any one task, we will" and prize software that "gets
-  smaller over time, that sheds the superfluous" — the whole app is closer
-  to a workshop tool built for one particular painting than a platform
-  built to hold any painting at all.
-- Bernie DeKoven's [_The Well-Played Game_](https://www.deepfun.com/fun-store/the-well-played-game/)
-  says a shared act is worth more for the quality of playing it together than
-  for any individual score — there is no score here, no likes, nothing to
-  win, only the quality of what gets left behind.
+## How to play
+
+Open the page, make a room, and send the four-letter link (`/r/ABCD`) to the
+people you're with. Up to four can fight, humans or computer-controlled;
+anyone beyond that watches, and anyone who arrives mid-match watches until
+the next one. There are four fighters: a heavy brush-master, a light, fast
+seal-carver, an ink-blot zoner and an all-rounder.
+
+On a laptop: A/D or the arrow keys move; W, up or space jumps (jump again in
+the air); S or down fast-falls, or drops through a platform; J attacks (hold
+a direction on the ground for a strong attack); K is your special; L shields.
+On a phone, hold it in landscape: a stick under the left thumb, buttons under
+the right.
+
+Damage climbs as you're hit, and the more damage, the further a hit throws
+you. Get launched past the edge of the stage and you lose a stock. Everyone
+has three; the last one standing wins. Finished matches are saved (winner's
+seal, who fought, KOs, how long it took) and survive restarts. Rooms
+themselves don't.
 
 ## What I chose not to build
 
-No accounts, avatars or profiles — a visitor is only the anonymous seal their
-browser is given on first visit, the same way a real seal marks presence
-without disclosing a name. No editing or deleting a colophon once it's
-written: ink doesn't come back off the paper, and a length limit (320
-characters) is the constraint that keeps a visitor considering a line rather
-than typing a paragraph. No likes, no replies, no threading, no feed of other
-people's activity, no notifications. Real-time and a place to write down one
-decision about several people at once both belong to the next two crits, not
-this one; this week is the smallest version of the object itself.
+No accounts, names, avatars or chat. Nothing a player types is ever shown to
+anyone, because there is nowhere to type. No ranked ladder, no matchmaking,
+no stats beyond the saved match history. No pausing the match for
+someone who has dropped: the others would pay for it. No way to edit or undo
+a result. Rooms don't persist; only the history does.
 
 ## What's enforced, what's judged
 
-`spec/` checks that a colophon written now is still there on the next
-request, that a visitor's own colophons are the ones marked as theirs (and
-nobody else's are), and that an empty or over-length line is rejected rather
-than silently corrupted. Whether the tone of what accumulates actually reads
-like a colophon — considered, brief, worth adding to a shared object — rather
-than chat is not something a test can check; that's for whoever reads the
-margin to judge.
+`spec/` checks the things that can be checked: the simulation is
+deterministic, a drop followed by a return inside 15 seconds gets the fighter
+back, 900 ticks of silence ends in forfeit, bad or oversized WebSocket
+messages are rejected without taking the server down, and the home page
+explains itself without JavaScript. The single accent colour is a rule in
+`CLAUDE.md`, kept by reading, not by a test.
+Whether the game is fun, whether the fighters feel different from one another
+and whether 15 seconds is the right grace on a phone in a real room are for
+people to judge by playing.
+
+## The decision
+
+When a player drops, their fighter lifts off the stage, can't be hit, and
+waits 15 seconds with a faint seal and countdown. The same seal returning in
+time reclaims it, with damage and stocks intact; otherwise they forfeit, and
+the match can't end while anyone is waiting. The alternatives I weighed were
+pausing everyone, handing the fighter to the computer and forfeiting at
+once; the case for each, and what this costs, is in
+[the decision record](docs/decisions/0001-grace-then-forfeit-on-drop.md).
