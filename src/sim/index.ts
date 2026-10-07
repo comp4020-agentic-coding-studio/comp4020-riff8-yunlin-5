@@ -23,6 +23,15 @@ const SHIELD_DRAIN = 0.5;
 const SHIELD_REGEN = 0.3;
 const SHIELD_BREAK_STUN = 90;
 const KO_CREDIT_TICKS = 300;
+export const ITEM_INTERVAL = 900;
+export const ITEM_JITTER = 180;
+export const INK_FRAMES = 480;
+const ITEM_SPAWN_Y = -480;
+const ITEM_GRAVITY = 0.4;
+const ITEM_MAX_FALL = 8;
+const ITEM_R = 14;
+const INK_DAMAGE = 1.4;
+const INK_KNOCKBACK = 1.25;
 
 type Move = "jab" | "strong" | "aerial" | "special";
 const MOVE_ACTIONS: readonly Action[] = ["jab", "strong", "aerial", "special"];
@@ -34,7 +43,7 @@ const SURFACES: Surface[] = [
   ...STAGE.platforms.map((p) => ({ ...p, solid: false })),
 ];
 
-export function createMatch(players: PlayerSetup[], seed: number, opts: { stocks?: number } = {}): MatchState {
+export function createMatch(players: PlayerSetup[], seed: number, opts: { stocks?: number; items?: boolean } = {}): MatchState {
   const fighters: (FighterState | null)[] = Array.from({ length: MAX_FIGHTERS }, () => null);
   for (const p of players) {
     const spawn = STAGE.spawns[p.slot];
@@ -43,10 +52,10 @@ export function createMatch(players: PlayerSetup[], seed: number, opts: { stocks
       facing: spawn.x < 0 ? 1 : -1, grounded: true, jumpsLeft: 1, fastFalling: false, dropThrough: 0,
       action: "idle", actionFrame: 0, damage: 0, stocks: opts.stocks ?? 3, hitstun: 0, hitstop: 0,
       invuln: 0, shield: 100, respawnIn: 0, hitThisMove: 0, prevButtons: 0, absentSince: null,
-      forfeited: false, prevStickY: 0, lastHitBy: null, lastHitTick: -1, kos: 0, falls: 0, damageDealt: 0,
+      forfeited: false, inked: 0, prevStickY: 0, lastHitBy: null, lastHitTick: -1, kos: 0, falls: 0, damageDealt: 0,
     };
   }
-  return { tick: 0, phase: "countdown", phaseTick: 0, rng: seed >>> 0, fighters, projectiles: [], nextId: 1, events: [], winner: null };
+  return { tick: 0, phase: "countdown", phaseTick: 0, rng: seed >>> 0, fighters, projectiles: [], nextId: 1, items: [], nextItemTick: opts.items === false ? null : 0, events: [], winner: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +109,7 @@ function respawnFighter(f: FighterState, st: MatchState, event: "respawn" | "bac
   f.invuln = RESPAWN_INVULN;
   f.shield = 100;
   f.respawnIn = 0;
+  f.inked = 0;
   if (event === "respawn") f.damage = 0;
   if (event === "respawn") st.events.push({ type: "respawn", slot: f.slot, x: f.x, y: f.y });
   else st.events.push({ type: "back", slot: f.slot });
@@ -138,6 +148,7 @@ function updateFighter(st: MatchState, f: FighterState, input: Input): void {
   f.prevStickY = input.y;
 
   if (f.invuln > 0) f.invuln--;
+  if (f.inked > 0 && f.hitstop === 0) f.inked--;
   if (f.dropThrough > 0) f.dropThrough--;
 
   if (f.hitstop > 0) {
@@ -360,6 +371,11 @@ function applyStrikes(st: MatchState, strikes: Strike[]): void {
   for (const s of strikes) {
     const t = s.target;
     const attacker = st.fighters[s.attacker]!;
+    const inked = attacker.inked > 0;
+    if (inked) {
+      s.damage *= INK_DAMAGE;
+      s.base *= INK_KNOCKBACK;
+    }
     const stopFrames = Math.floor(4 + s.damage / 3);
     if (t.action === "shield" && t.hitstun === 0) {
       t.shield -= s.damage * 2;
@@ -448,6 +464,56 @@ function stepProjectiles(st: MatchState): void {
   });
 }
 
+/** Deterministic draw from the match's own PRNG (mulberry32); the sim's only use of state.rng. */
+function nextRandom(st: MatchState): number {
+  st.rng = (st.rng + 0x6d2b79f5) >>> 0;
+  let t = st.rng;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function stepItems(st: MatchState): void {
+  if (st.nextItemTick === null) return;
+  if (st.nextItemTick === 0) {
+    st.nextItemTick = st.tick + ITEM_INTERVAL + Math.round((nextRandom(st) * 2 - 1) * ITEM_JITTER);
+  } else if (st.tick >= st.nextItemTick) {
+    if (st.items.length < 1) {
+      const g = STAGE.ground;
+      const x = Math.round(g.x1 + 30 + nextRandom(st) * (g.x2 - g.x1 - 60));
+      st.items.push({ id: st.nextId++, kind: "inkpot", x, y: ITEM_SPAWN_Y, vy: 0, grounded: false });
+    }
+    st.nextItemTick = st.tick + ITEM_INTERVAL + Math.round((nextRandom(st) * 2 - 1) * ITEM_JITTER);
+  }
+  const keep: typeof st.items = [];
+  for (const it of st.items) {
+    if (!it.grounded) {
+      const prevY = it.y;
+      it.vy = Math.min(ITEM_MAX_FALL, it.vy + ITEM_GRAVITY);
+      it.y += it.vy;
+      let best: Surface | null = null;
+      for (const s of SURFACES) {
+        if (it.x < s.x1 || it.x > s.x2) continue;
+        if (prevY <= s.y && it.y >= s.y && (!best || s.y < best.y)) best = s;
+      }
+      if (best) {
+        it.y = best.y;
+        it.vy = 0;
+        it.grounded = true;
+      }
+    }
+    if (it.y > STAGE.blast.bottom) continue;
+    const taker = st.fighters.find((f) => onField(f) && circleHitsFighter(it.x, it.y - ITEM_R, ITEM_R, f));
+    if (taker) {
+      taker.inked = INK_FRAMES;
+      st.events.push({ type: "pickup", slot: taker.slot, x: it.x, y: it.y });
+      continue;
+    }
+    keep.push(it);
+  }
+  st.items = keep;
+}
+
 function checkKOs(st: MatchState): void {
   const B = STAGE.blast;
   for (const f of st.fighters) {
@@ -463,6 +529,7 @@ function checkKOs(st: MatchState): void {
     f.vx = f.vy = 0;
     f.hitstun = f.hitstop = 0;
     f.hitThisMove = 0;
+    f.inked = 0;
     f.lastHitBy = null;
     st.events.push({ type: "ko", slot: f.slot, x: f.x, y: f.y, by });
     if (by !== null) st.fighters[by]!.kos++;
@@ -523,6 +590,7 @@ export function step(state: MatchState, inputs: (Input | null | undefined)[]): M
   }
   tickRespawns(st);
   stepProjectiles(st);
+  stepItems(st);
   resolveHits(st);
   checkKOs(st);
   checkWin(st);

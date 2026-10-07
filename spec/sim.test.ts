@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  BTN, FIGHTERS, GRACE_TICKS, NO_INPUT, STAGE, cpuInput, createMatch, hashState, knockback, step,
+  BTN, FIGHTERS, GRACE_TICKS, INK_FRAMES, ITEM_INTERVAL, ITEM_JITTER, NO_INPUT, STAGE, cpuInput, createMatch, hashState, knockback, step,
 } from "../src/sim/index.ts";
 import type { Input, MatchState } from "../src/sim/index.ts";
 
@@ -158,6 +158,7 @@ describe("determinism", () => {
     const go = () => {
       let s = fight();
       s = edit(s, 0, { cpu: true });
+      s.nextItemTick = null; // items are the rng's only consumer; isolate the cpu
       const rng = s.rng;
       for (let i = 0; i < 600; i++) s = step(s, [cpuInput(s, 0), cpuInput(s, 1)]);
       expect(s.rng).toBe(rng);
@@ -385,6 +386,101 @@ describe("cpu", () => {
       expect(a.b & ~15).toBe(0);
       s = step(s, [a, cpuInput(s, 1)]);
     }
+  });
+});
+
+describe("ink pots", () => {
+  const away = [NO_INPUT, NO_INPUT];
+  function untilItem(s: MatchState, max = 2000): MatchState {
+    for (let i = 0; i < max && s.items.length === 0; i++) s = step(s, away);
+    return s;
+  }
+  it("spawns one within the interval window, above the ground span", () => {
+    let s = fight();
+    const start = s.tick;
+    s = untilItem(s);
+    expect(s.items.length).toBe(1);
+    expect(s.tick - start).toBeGreaterThanOrEqual(ITEM_INTERVAL - ITEM_JITTER);
+    expect(s.tick - start).toBeLessThanOrEqual(ITEM_INTERVAL + ITEM_JITTER + 2);
+    expect(s.items[0].x).toBeGreaterThanOrEqual(STAGE.ground.x1);
+    expect(s.items[0].x).toBeLessThanOrEqual(STAGE.ground.x2);
+  });
+  it("does not spawn a second while one is on the stage, nor when items are off", () => {
+    let s = untilItem(fight());
+    s = edit(s, 0, { x: -600, y: 0 }); // keep fighters off it
+    s = run(s, 3 * ITEM_INTERVAL, away);
+    expect(s.items.length).toBeLessThanOrEqual(1);
+    let off = createMatch([{ slot: 0, fighter: "wanderer" }, { slot: 1, fighter: "wanderer" }], 7, { items: false });
+    while (off.phase === "countdown") off = step(off, []);
+    off = run(off, 2 * ITEM_INTERVAL, away);
+    expect(off.items.length).toBe(0);
+  });
+  it("falls and lands on a surface", () => {
+    let s = untilItem(fight());
+    const it0 = s.items[0];
+    for (let i = 0; i < 400 && !s.items[0]?.grounded; i++) {
+      s = edit(s, 0, { x: -300, y: 0 });
+      s = edit(s, 1, { x: 300, y: 0 });
+      s = step(s, away);
+    }
+    const it = s.items.find((i) => i.id === it0.id);
+    if (it) {
+      expect(it.grounded).toBe(true);
+      expect([0, -110, -210]).toContain(it.y);
+    }
+  });
+  it("touching it sets inked and emits pickup", () => {
+    let s = untilItem(fight());
+    const it = s.items[0];
+    s = edit(s, 0, { x: it.x, y: 0 });
+    let got = false;
+    for (let i = 0; i < 300 && !got; i++) {
+      s = edit(s, 0, { x: it.x, y: Math.max(f(s, 0).y, 0) });
+      s = step(s, away);
+      got = has(s, "pickup");
+    }
+    expect(got).toBe(true);
+    expect(f(s, 0).inked).toBeGreaterThan(INK_FRAMES - 5);
+    expect(s.items.length).toBe(0);
+  });
+  it("an inked hit does more damage than an identical plain hit", () => {
+    const hit = (inked: number) => {
+      let s = fight();
+      s = edit(s, 0, { x: 0, facing: 1, inked });
+      s = edit(s, 1, { x: 30, facing: -1 });
+      s = step(s, [IN(BTN.ATTACK, 100), NO_INPUT]);
+      s = run(s, 14, away);
+      return f(s, 1).damage;
+    };
+    const plain = hit(0);
+    expect(plain).toBeGreaterThan(0);
+    expect(hit(300)).toBeCloseTo(plain * 1.4);
+  });
+  it("same seed gives the same item positions, different seeds usually differ", () => {
+    const drops = (seed: number) => {
+      let s = createMatch([{ slot: 0, fighter: "wanderer" }, { slot: 1, fighter: "wanderer" }], seed);
+      const out: number[] = [];
+      for (let i = 0; i < 4000; i++) {
+        s = step(s, [null, null].map(() => NO_INPUT));
+        if (s.items.length && out[out.length - 1] !== s.items[0].id) out.push(s.items[0].id, s.items[0].x, s.tick);
+      }
+      return out;
+    };
+    expect(drops(5)).toEqual(drops(5));
+    expect(drops(5)).not.toEqual(drops(6));
+  });
+  it("the determinism hash covers items over 1500 ticks", () => {
+    const go = () => {
+      let s = createMatch([{ slot: 0, fighter: "brush" }, { slot: 1, fighter: "blot" }], 11);
+      let seen = false;
+      for (let t = 0; t < 1500; t++) {
+        s = step(s, [IN(t % 31 === 0 ? BTN.JUMP : 0, (t % 120) - 60), IN(t % 47 === 0 ? BTN.ATTACK : 0, 0)]);
+        if (s.items.length) seen = true;
+      }
+      expect(seen).toBe(true);
+      return hashState(s);
+    };
+    expect(go()).toBe(go());
   });
 });
 
