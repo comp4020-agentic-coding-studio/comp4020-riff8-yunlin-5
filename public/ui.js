@@ -109,7 +109,11 @@ export class UI {
     this.guestBtn = h("button", "btn", "Add a second player here");
     this.guestBtn.type = "button";
     this.guestBtn.onclick = () => this.on.guest(!this.guest());
-    row.append(this.readyBtn, this.addCpu, this.remCpu, this.guestBtn);
+    this.replayBtn = h("button", "btn", "Watch the last match");
+    this.replayBtn.type = "button";
+    this.replayBtn.hidden = true;
+    this.replayBtn.onclick = () => this.on.replay(true);
+    row.append(this.readyBtn, this.addCpu, this.remCpu, this.guestBtn, this.replayBtn);
     p.append(row);
     this.noteEl = h("p", "note");
     p.append(this.noteEl);
@@ -130,6 +134,15 @@ export class UI {
     this.badge = h("div", "badge");
     this.badge.hidden = true;
 
+    // replay mark and Stop button
+    this.replayBar = h("div", "replaybar");
+    this.replayBar.hidden = true;
+    const stop = h("button", "btn small", "Stop");
+    stop.type = "button";
+    stop.onclick = () => this.on.replay(false);
+    this.replayBar.append(h("span", "replaymark", "replay"), stop);
+    this.replaying = false;
+
     // quiet full-screen notice with one button (replaced seat, room full)
     this.blockedEl = h("div", "blocked");
     this.blockedEl.hidden = true;
@@ -140,7 +153,7 @@ export class UI {
     bp.append(this.blockedText, this.blockedBtn);
     this.blockedEl.append(bp);
 
-    r.append(this.status, this.lobbyEl, this.resultsEl, this.badge, this.blockedEl);
+    r.append(this.status, this.lobbyEl, this.resultsEl, this.badge, this.replayBar, this.blockedEl);
   }
 
   showBlocked(text, label, onClick) {
@@ -216,9 +229,10 @@ export class UI {
     if (!l || !this.welcome) return;
     const spectator = this.welcome.slot == null;
     const phase = l.phase;
-    this.lobbyEl.hidden = phase !== "lobby";
+    this.lobbyEl.hidden = phase !== "lobby" || this.replaying;
     if (phase !== "results") this.resultsEl.hidden = true;
-    this.badge.hidden = phase !== "match";
+    this.badge.hidden = phase !== "match" || this.replaying;
+    this.replayBtn.hidden = !l.replayAvailable;
     if (phase === "match") {
       this.badge.textContent = (spectator ? "Watching. " : "") + "Room " + l.room;
     }
@@ -358,6 +372,12 @@ export class UI {
     ctx.scale(0.8, 0.8);
     drawFighter(ctx, { action: "idle", frame: 0, vy: 0, shield: 100, slot, fighter: id }, { ink: SLOT_COLOURS[slot], time: 0 });
     ctx.restore();
+  }
+
+  setReplay(on) {
+    this.replaying = on;
+    this.replayBar.hidden = !on;
+    this.refresh();
   }
 
   showResults(end) {

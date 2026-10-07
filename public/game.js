@@ -20,6 +20,22 @@ const input = new Input(touchRoot);
 let welcome = null;
 let lobby = null;
 let phase = "lobby";
+let wantReplay = false; // a replay was asked for and has not ended
+let replaying = false;
+
+function setReplaying(on) {
+  if (replaying === on) return;
+  replaying = on;
+  net.replaying = on;
+  net.clear();
+  renderer.reset();
+  ui.setReplay(on);
+}
+
+function endReplay() {
+  wantReplay = false;
+  setReplaying(false);
+}
 
 const net = new Net({
   open: () => {
@@ -50,13 +66,23 @@ const net = new Net({
     ui.setWelcome(w);
     if (lobby) ui.setLobby(lobby);
   },
+  snap: (m) => {
+    if (m.replay) {
+      if (!wantReplay) return false; // stale, after Stop
+      setReplaying(true);
+    } else if (replaying) {
+      endReplay(); // a real match took over
+    }
+  },
+  replayEnd: () => endReplay(),
   lobby: (l) => {
     const prev = phase;
+    if (l.phase !== "lobby" && l.phase !== prev && replaying) endReplay();
     lobby = l;
     phase = l.phase;
     if (welcome && l.you !== undefined) welcome.slot = net.mySlot = l.you;
     input.guest = l.youGuest != null;
-    if (phase === "lobby" && prev !== "lobby") {
+    if (phase === "lobby" && prev !== "lobby" && !replaying) {
       net.clear();
       renderer.reset();
     }
@@ -79,6 +105,14 @@ const ui = new UI(
     stage: (id) => net.send({ t: "stage", id }),
     ready: (ready) => net.send({ t: "ready", ready }),
     cpu: (add) => net.send({ t: "cpu", add }),
+    replay: (go) => {
+      wantReplay = go;
+      if (go) net.send({ t: "replay" });
+      else {
+        net.send({ t: "replay", stop: true });
+        endReplay();
+      }
+    },
   },
   touch,
 );
@@ -136,10 +170,10 @@ function frame(now) {
     worst = 0;
   }
 
-  const inMatch = phase === "match" && welcome && welcome.slot != null;
+  const inMatch = !replaying && phase === "match" && welcome && welcome.slot != null;
   input.setActive(inMatch);
   let view;
-  if (phase === "lobby") {
+  if (phase === "lobby" && !replaying) {
     view = lobbyView();
   } else {
     view = net.view(now);
@@ -156,7 +190,7 @@ function frame(now) {
       lastLeft = left;
     }
   }
-  renderer.draw(view, now, { showHud: phase !== "lobby", lobby: phase === "lobby" });
+  renderer.draw(view, now, { showHud: phase !== "lobby" || replaying, lobby: phase === "lobby" && !replaying });
 
   if (inMatch && now - lastSend >= 15) {
     lastSend = now;
