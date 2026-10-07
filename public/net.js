@@ -102,7 +102,11 @@ export class Net {
         this.on.lobby?.(m);
         break;
       case "snap":
+        if (this.on.snap?.(m) === false) break;
         this.addSnap(m);
+        break;
+      case "replayEnd":
+        this.on.replayEnd?.(m);
         break;
       case "end":
         this.on.end?.(m);
@@ -209,7 +213,7 @@ export class Net {
   applyLead(fighters, newest, now) {
     const dt = Math.min(100, this.lastViewAt ? now - this.lastViewAt : 16);
     this.lastViewAt = now;
-    if (!this.lead || this.mySlot == null || newest.phase !== "fight") {
+    if (!this.lead || this.mySlot == null || this.replaying || newest.phase !== "fight") {
       this.leadPos = null;
       return;
     }

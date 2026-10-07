@@ -6,9 +6,11 @@ import { createMatch, cpuInput, step, FIGHTERS, NO_INPUT, STAGES } from "../sim/
 import { recordMatch } from "../db.ts";
 import { sealGlyph } from "../seal.ts";
 import { buildResults, buildSnap } from "./protocol.ts";
+import { Recording, type Cursor } from "./replay.ts";
 
 export const MAX_ROOMS = 50;
 export const MAX_SPECTATORS = 8;
+const MAX_REPLAYS = 8; // concurrent replays per room
 const MAX_FIGHTERS = 4;
 const RESULTS_MS = 6000;
 const EMPTY_ROOM_MS = 2 * 60 * 1000;
@@ -60,6 +62,9 @@ export class Room {
   private pending: SimEvent[] = [];
   private resultsAt = 0;
   private glyphs: string[] = [];
+  private recording: Recording | null = null; // the match in progress
+  private lastMatch: Recording | null = null; // the last finished match
+  private replays = new Map<Client, Cursor>();
 
   constructor(code: string, now: number) {
     this.code = code;
@@ -119,6 +124,8 @@ export class Room {
       const old = seat.client;
       if (old && old !== client) {
         this.clients.delete(old);
+        this.replays.delete(old);
+        this.replayPending.delete(old);
         old.room = null;
         old.slot = null;
         old.guestSlot = null;
@@ -156,6 +163,9 @@ export class Room {
 
   leave(client: Client, now: number): void {
     if (!this.clients.delete(client)) return;
+    this.replays.delete(client);
+    this.replayPending.delete(client);
+    this.replaySpeed.delete(client);
     client.room = null;
     for (const slot of [client.slot, client.guestSlot]) {
       if (slot === null) continue;
@@ -280,14 +290,14 @@ export class Room {
     }
     if (fighters < 2 || humans < 1) return;
     this.glyphs = this.seats.map((s) => s?.glyph ?? "?");
-    this.state = createMatch(
-      slots.flatMap((s) => {
-        const seat = this.seats[s];
-        return seat ? [{ slot: s, fighter: seat.fighter, cpu: seat.cpu }] : [];
-      }),
-      randomBytes(4).readUInt32BE(0),
-      { stage: this.stage },
-    );
+    const setup = slots.flatMap((s) => {
+      const seat = this.seats[s];
+      return seat ? [{ slot: s, fighter: seat.fighter, cpu: seat.cpu }] : [];
+    });
+    const seed = randomBytes(4).readUInt32BE(0);
+    this.state = createMatch(setup, seed, { stage: this.stage });
+    this.recording = new Recording(setup, seed, this.stage, this.glyphs);
+    this.stopAllReplays();
     this.pending = [];
     this.phase = "match";
     this.broadcastLobby();
@@ -297,7 +307,56 @@ export class Room {
   tick(now: number): void {
     if (this.phase === "match" && this.state) this.tickMatch(now);
     else if (this.phase === "results" && now >= this.resultsAt) this.toLobby();
+    if (this.replays.size > 0) this.tickReplays();
   }
+
+  /** Start (or restart) a replay of the last match for this socket. Lobby phase only. */
+  startReplay(client: Client, speed: 1 | 2 | 4 = 1): void {
+    if (this.phase !== "lobby" || !this.lastMatch || !this.clients.has(client)) return;
+    if (!this.replays.has(client) && this.replays.size >= MAX_REPLAYS) return;
+    this.replays.set(client, this.lastMatch.start());
+    this.replaySpeed.set(client, speed);
+  }
+
+  stopReplay(client: Client): void {
+    this.replayPending.delete(client);
+    this.replaySpeed.delete(client);
+    if (this.replays.delete(client)) client.send(JSON.stringify({ t: "replayEnd" }));
+  }
+
+  private stopAllReplays(): void {
+    for (const c of this.replays.keys()) c.send(JSON.stringify({ t: "replayEnd" }));
+    this.replays.clear();
+    this.replayPending.clear();
+    this.replaySpeed.clear();
+  }
+
+  private tickReplays(): void {
+    for (const [client, cur] of [...this.replays]) {
+      for (let n = this.replaySpeed.get(client) ?? 1; n > 0; n--) this.replayStep(client, cur);
+    }
+  }
+
+  private replayStep(client: Client, cur: Cursor): void {
+    if (!this.replays.has(client)) return;
+    if (!cur.advance()) {
+      this.stopReplay(client);
+      return;
+    }
+    const st = cur.state;
+    const pending = this.replayPending.get(client) ?? [];
+    pending.push(...st.events);
+    const last = cur.done;
+    if (st.tick % 2 === 0 || last) {
+      client.send(buildSnap(st, cur.glyphs, pending, true));
+      this.replayPending.delete(client);
+    } else {
+      this.replayPending.set(client, pending);
+    }
+    if (last) this.stopReplay(client);
+  }
+  private replayPending = new Map<Client, SimEvent[]>();
+  private replaySpeed = new Map<Client, 1 | 2 | 4>(); // fast-forward factor, default 1
 
   private tickMatch(now: number): void {
     const state = this.state!;
@@ -313,6 +372,7 @@ export class Room {
         seat.latched = 0;
       }
     }
+    this.recording?.push(inputs);
     const next = step(state, inputs);
     this.state = next;
     for (const e of next.events) this.pending.push(e);
@@ -341,6 +401,8 @@ export class Room {
     } catch (err) {
       console.error("recordMatch failed", err);
     }
+    this.lastMatch = this.recording;
+    this.recording = null;
     this.phase = "results";
     this.resultsAt = now + RESULTS_MS;
     this.broadcastLobby();
@@ -384,6 +446,7 @@ export class Room {
         const present = (seat.cpu || seat.client !== null) && !f?.forfeited;
         return [{ slot: s, glyph: seat.glyph, fighter: seat.fighter, ready: seat.ready, cpu: seat.cpu, guest: seat.guest, present }];
       }),
+      replayAvailable: this.lastMatch !== null,
       stage: this.stage,
       stages: Object.values(STAGES).map((g) => ({ id: g.id, name: g.name })),
       stageDef: STAGES[this.stage],
