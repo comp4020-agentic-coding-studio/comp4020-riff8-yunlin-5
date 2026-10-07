@@ -82,7 +82,8 @@ more often than laptops.
   (15 seconds, then forfeit) and visible (the faint seal and countdown tell
   the whole room what happened), which is the deterrent a room of friends
   needs.
-- One browser is one seat per room: two tabs in the same browser cannot both
+- One seal holds at most its own seat plus one local guest seat, and takeover
+  and reclaim move both together. Two tabs in the same browser cannot both
   play (use another browser or profile).
 - The server holds a token-to-slot map for the life of the room. It never
   leaves the server.
