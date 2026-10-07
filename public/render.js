@@ -124,6 +124,22 @@ export class Renderer {
       this.shake = 14;
     } else if (ev.type === "start") {
       this.banner = { text: "墨鬥", until: now + 900 };
+    } else if (ev.type === "pickup") {
+      for (let i = 0; i < 18; i++) {
+        const a = -Math.PI * (0.1 + 0.8 * Math.random());
+        const sp = 1.5 + Math.random() * 4;
+        this.particles.push({
+          x: ev.x,
+          y: ev.y - 10,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          life: 0,
+          max: 26 + Math.random() * 20,
+          r: 2 + Math.random() * 3,
+          c: Math.random() < 0.6 ? col(ev.slot) : INK,
+        });
+      }
+      this.marks.push({ x: ev.x, y: ev.y - 10, t: 0, size: 40, shield: false });
     } else if (ev.type === "respawn") {
       this.spawnFx[ev.slot] = now;
       for (let i = 0; i < 10; i++)
@@ -220,6 +236,7 @@ export class Renderer {
     drawStage(ctx, this.stage);
     if (view) {
       this.drawFighters(ctx, view, now);
+      this.drawItems(ctx, view, now);
       this.drawProjectiles(ctx, view, now);
     }
     this.drawParticles(ctx, sdt);
@@ -250,6 +267,7 @@ export class Renderer {
       if (f.invuln && Math.floor(now / 70) % 2) ctx.globalAlpha = 0.45;
       const fx = this.spawnFx[f.slot];
       const u = fx === undefined ? 1 : Math.min(1, (now - fx) / 650);
+      if (f.inked) this.drawInkHalo(ctx, ink, now);
       ctx.save();
       if (u < 1) {
         // the fighter is painted back in, top down, behind a falling stroke
@@ -277,6 +295,7 @@ export class Renderer {
         ctx.stroke();
         ctx.restore();
       } else if (fx !== undefined) delete this.spawnFx[f.slot];
+      if (f.inked) this.drawInkDrips(ctx, ink, now, f.slot);
       // seal tag over the head
       ctx.globalAlpha = 1;
       this.sealBox(ctx, -9, -96, 18, f.glyph, ink, 12);
@@ -294,6 +313,79 @@ export class Renderer {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(glyph || "", x + s / 2, y + s / 2 + 1);
+  }
+
+  // An ink pot: round-bellied jar, dark ink showing at the mouth. ~22 px tall,
+  // (x, y) is its base.
+  drawItems(ctx, view, now) {
+    for (const it of view.items || []) {
+      const bob = Math.sin(now / 280 + it.id) * 1.5;
+      ctx.save();
+      ctx.translate(it.x, it.y + bob - 1);
+      ctx.fillStyle = "#e4dcc6";
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(-4, -22);
+      ctx.bezierCurveTo(-5, -18, -11, -15, -11, -8);
+      ctx.bezierCurveTo(-11, -2, -7, 0, 0, 0);
+      ctx.bezierCurveTo(7, 0, 11, -2, 11, -8);
+      ctx.bezierCurveTo(11, -15, 5, -18, 4, -22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // ink surface in the mouth, and a loaded rim
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.ellipse(0, -22, 4.5, 1.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // one brush stroke of glaze on the belly
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-7, -11);
+      ctx.quadraticCurveTo(0, -6, 7, -12);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  drawInkHalo(ctx, colour, now) {
+    const pulse = 0.85 + 0.15 * Math.sin(now / 120);
+    const g = ctx.createRadialGradient(0, -36, 6, 0, -36, 54 * pulse);
+    g.addColorStop(0, "rgba(31,27,22,0.0)");
+    g.addColorStop(0.55, "rgba(31,27,22,0.22)");
+    g.addColorStop(1, "rgba(31,27,22,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, -36, 54 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, -36, 30 * pulse, 44 * pulse, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  drawInkDrips(ctx, colour, now, slot) {
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const ph = ((now / 700 + i * 0.27 + slot * 0.13) % 1);
+      const x = -16 + i * 11;
+      const y0 = -58 + (i % 2) * 8;
+      ctx.globalAlpha = 1 - ph;
+      ctx.lineWidth = 2.5 - ph;
+      ctx.beginPath();
+      ctx.moveTo(x, y0 + ph * 10);
+      ctx.lineTo(x, y0 + ph * 10 + 6 + ph * 10);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   drawProjectiles(ctx, view, now) {

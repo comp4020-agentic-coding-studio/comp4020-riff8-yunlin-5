@@ -183,8 +183,14 @@ export class Net {
       const pa = a.projectiles.find((x) => x.id === pb.id);
       projectiles.push(pa ? { ...pb, x: pa.x + (pb.x - pa.x) * alpha, y: pa.y + (pb.y - pa.y) * alpha } : pb);
     }
+    const items = [];
+    for (const ib of b.items ?? []) {
+      const ia = (a.items ?? []).find((x) => x.id === ib.id);
+      items.push(ia ? { ...ib, x: ia.x + (ib.x - ia.x) * alpha, y: ia.y + (ib.y - ia.y) * alpha } : ib);
+    }
     const near = alpha < 0.5 ? a : b;
     return {
+      items,
       tick: rt,
       phase: near.phase,
       countdown: near.countdown,
