@@ -1,6 +1,8 @@
 import { escapeHtml } from "./html.ts";
 import type { MatchRecord } from "./db.ts";
-import { STAGES } from "./sim/index.ts";
+import { FIGHTERS, STAGES } from "./sim/index.ts";
+
+const fighterName = (id: string): string => (Object.hasOwn(FIGHTERS, id) ? FIGHTERS[id as keyof typeof FIGHTERS].name : id);
 
 const TITLE = "墨鬥 Mòdòu";
 
@@ -34,9 +36,9 @@ function layout(title: string, body: string): string {
 function historyList(matches: MatchRecord[]): string {
   if (matches.length === 0) return `<p class="empty-note">No matches yet. The scroll is blank.</p>`;
   const items = matches.map((m) => {
-    const who = m.winnerGlyph ? `${escapeHtml(m.winnerGlyph)} won with ${escapeHtml(m.winnerFighter ?? "?")}` : "no winner";
+    const who = m.winnerGlyph ? `${escapeHtml(m.winnerGlyph)} won with ${escapeHtml(fighterName(m.winnerFighter ?? "?"))}` : "no winner";
     const where = m.stage ? ` on ${escapeHtml(Object.hasOwn(STAGES, m.stage) ? STAGES[m.stage as keyof typeof STAGES].name : m.stage)}` : "";
-    const roster = m.players.map((p) => `${escapeHtml(p.glyph)} ${escapeHtml(p.fighter)}`).join(", ");
+    const roster = m.players.map((p) => `${escapeHtml(p.glyph)} ${escapeHtml(fighterName(p.fighter))}`).join(", ");
     return `<li>${who}${where} <span class="history-roster">(${roster})</span></li>`;
   });
   return `<ol class="history-list">\n          ${items.join("\n          ")}\n        </ol>`;
