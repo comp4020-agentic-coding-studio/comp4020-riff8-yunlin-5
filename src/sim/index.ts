@@ -166,6 +166,7 @@ function updateFighter(st: MatchState, f: FighterState, input: Input): void {
     if (f.hitstun === 0) {
       f.action = f.grounded ? "idle" : "fall";
       f.actionFrame = 0;
+      if (!f.grounded) f.jumpsLeft = 1; // a recovery option after being launched
     }
   } else if (isMove(f.action)) {
     const move = def.moves[f.action];
@@ -275,7 +276,10 @@ function updateFighter(st: MatchState, f: FighterState, input: Input): void {
     if (!supportAt(f)) f.grounded = false;
   }
 
-  if (!f.grounded) collide(f, prevX, prevY, def);
+  if (!f.grounded) {
+    collide(f, prevX, prevY, def);
+    ledgeAssist(f, input);
+  }
 
   if (f.grounded && f.action === "aerial") endMove(f);
 }
@@ -287,10 +291,35 @@ function breakShield(f: FighterState): void {
   f.actionFrame = 0;
 }
 
+const LEDGE_DEPTH = 36;
+const LEDGE_REACH = 28;
+const LEDGE_INSET = 4;
+
+/** Lifts a fighter just below or beside a ledge onto the corner, so there's a way back. */
+function ledgeAssist(f: FighterState, input: Input): void {
+  const g = STAGE.ground;
+  if (f.grounded || f.hitstun > 0 || f.y <= g.y || f.y > g.y + LEDGE_DEPTH) return;
+  const left = f.x >= g.x1 - LEDGE_REACH && f.x <= g.x1;
+  const right = f.x >= g.x2 && f.x <= g.x2 + LEDGE_REACH;
+  if (!left && !right) return;
+  const toward = left ? input.x > 0 : input.x < 0;
+  if (!(f.vy >= 0 || toward)) return;
+  f.y = g.y;
+  f.x = left ? g.x1 + LEDGE_INSET : g.x2 - LEDGE_INSET;
+  f.vx = 0;
+  f.vy = 0;
+  f.grounded = true;
+  f.jumpsLeft = 1;
+  f.fastFalling = false;
+  if (!isMove(f.action)) f.action = "idle";
+}
+
 function collide(f: FighterState, prevX: number, prevY: number, _def: FighterDef): void {
   // side wall of the solid ground block: it extends below its top surface.
   const g = STAGE.ground;
-  if (f.y > g.y && f.x > g.x1 && f.x < g.x2) {
+  // Only a fighter that was already below the top last frame: one crossing the top this
+  // frame lands on it (below) instead of being pushed off.
+  if (f.y > g.y && prevY > g.y && f.x > g.x1 && f.x < g.x2) {
     f.x = prevX <= g.x1 || (prevX < g.x2 && prevX - g.x1 < g.x2 - prevX) ? g.x1 : g.x2;
     f.vx = 0;
   }

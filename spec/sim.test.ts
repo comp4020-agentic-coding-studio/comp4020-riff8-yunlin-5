@@ -483,3 +483,71 @@ describe("ink pots", () => {
     expect(go()).toBe(go());
   });
 });
+
+describe("landing and the ledge", () => {
+  const ids = ["brush", "carver", "blot", "wanderer"] as const;
+  function jumpIn(id: (typeof ids)[number], stick: number) {
+    let s = createMatch([{ slot: 0, fighter: id }, { slot: 1, fighter: "wanderer" }], 1);
+    while (s.phase === "countdown") s = step(s, []);
+    s = edit(s, 0, { x: -100 });
+    s = edit(s, 1, { x: 300 });
+    s = step(s, [IN(BTN.JUMP, stick), NO_INPUT]);
+    for (let i = 0; i < 200; i++) {
+      s = step(s, [IN(0, stick), NO_INPUT]);
+      if (f(s, 0).grounded && i > 3) break;
+    }
+    return f(s, 0);
+  }
+  for (const id of ids) {
+    it(`${id}: a jump in place lands where it started`, () => {
+      const l = jumpIn(id, 0);
+      expect(l.grounded).toBe(true);
+      expect(Math.abs(l.x + 100)).toBeLessThan(3);
+    });
+    it(`${id}: a walking jump lands in the stage's interior, not on the edge`, () => {
+      const l = jumpIn(id, 100);
+      expect(l.grounded).toBe(true);
+      expect(l.x).toBeGreaterThan(-100);
+      expect(Math.abs(l.x)).toBeLessThan(250);
+    });
+  }
+  it("a jab at 0% from centre does not shove the victim to the edge", () => {
+    let s = fight();
+    s = edit(s, 0, { x: 0, facing: 1 });
+    s = edit(s, 1, { x: 30, facing: -1 });
+    s = step(s, [IN(BTN.ATTACK), NO_INPUT]);
+    s = run(s, 120, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 1).stocks).toBe(3);
+    expect(Math.abs(f(s, 1).x)).toBeLessThan(150);
+  });
+  it("ledge assist lifts a fighter just below and beside the edge onto the corner", () => {
+    for (const side of [-1, 1]) {
+      let s = fight();
+      const edge = side < 0 ? STAGE.ground.x1 : STAGE.ground.x2;
+      s = edit(s, 0, { x: edge + side * 10, y: 20, vx: 0, vy: 2, grounded: false, jumpsLeft: 0 });
+      s = step(s, [IN(0, -side * 100), NO_INPUT]);
+      expect(f(s, 0).grounded).toBe(true);
+      expect(f(s, 0).y).toBe(0);
+      expect(Math.abs(f(s, 0).x)).toBeCloseTo(Math.abs(edge) - 4, 0);
+      expect(f(s, 0).jumpsLeft).toBe(1);
+    }
+  });
+  it("ledge assist does not apply too deep, too far out, or during hitstun", () => {
+    const tryIt = (patch: object) => {
+      let s = fight();
+      s = edit(s, 0, { grounded: false, vy: 2, vx: 0, ...patch });
+      s = step(s, [IN(0, 100), NO_INPUT]);
+      return f(s, 0).grounded;
+    };
+    expect(tryIt({ x: -340, y: 80 })).toBe(false);
+    expect(tryIt({ x: -400, y: 20 })).toBe(false);
+    expect(tryIt({ x: -340, y: 20, hitstun: 10 })).toBe(false);
+  });
+  it("hitstun ending in the air restores the double jump", () => {
+    let s = fight();
+    s = edit(s, 0, { x: 0, y: -200, grounded: false, vy: 0, hitstun: 3, jumpsLeft: 0, action: "hitstun" });
+    s = run(s, 4, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 0).hitstun).toBe(0);
+    expect(f(s, 0).jumpsLeft).toBe(1);
+  });
+});
