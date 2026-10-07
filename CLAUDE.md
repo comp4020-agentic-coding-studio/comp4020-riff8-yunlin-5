@@ -50,10 +50,11 @@ first, in the same commit.
 - `src/sim/` stays pure and deterministic: no `Date`, `Math.random` or I/O.
 - `/` explains itself without JavaScript.
 - Colour carries identity: each slot has one ink colour (`SLOT_COLOURS` in
-  `public/render.js`), used for that player's marks. Everything else is ink
-  on paper, with vermilion (`--seal`) also used for the primary button, focus
-  rings and damage heat. Add no decorative colour; grep for every use of a
-  colour before claiming what it means.
+  `public/render.js`). The page chrome uses vermilion `--seal` (the seal
+  stamp's colour, also slot 0's) for what asks for your action or attention:
+  the primary button, focus rings, countdown, rotate hint, damage heat. Links
+  are classic blue. The stage is ink wash on paper. Nothing else is coloured;
+  grep every colour literal before claiming otherwise.
 - A player who drops gets the 15 s grace, and a fresh socket with the same
   seal takes the seat over, per
   `docs/decisions/0001-grace-then-forfeit-on-drop.md`. Change that file

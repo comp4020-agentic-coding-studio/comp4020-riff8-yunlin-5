@@ -42,6 +42,7 @@ const net = new Net({
   reset: () => renderer.reset(),
   welcome: (w) => {
     welcome = w;
+    net.mySlot = w.slot;
     renderer.setStage(w.stage);
     if (location.pathname.toLowerCase() !== "/r/" + w.room.toLowerCase()) history.replaceState(null, "", "/r/" + w.room);
     document.body.dataset.room = w.room;
@@ -52,7 +53,7 @@ const net = new Net({
     const prev = phase;
     lobby = l;
     phase = l.phase;
-    if (welcome && l.you !== undefined) welcome.slot = l.you;
+    if (welcome && l.you !== undefined) welcome.slot = net.mySlot = l.you;
     if (phase === "lobby" && prev !== "lobby") {
       net.clear();
       renderer.reset();

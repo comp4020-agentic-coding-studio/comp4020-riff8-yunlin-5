@@ -102,6 +102,7 @@ export function attachWs(server: Server): NetHandle {
       slot: null,
       lastInput: NO_INPUT,
       lastInputTick: 0,
+      latched: 0,
       send(data) {
         if (ws.readyState !== WebSocket.OPEN) return;
         if (ws.bufferedAmount > MAX_BUFFERED) {
@@ -148,6 +149,7 @@ export function attachWs(server: Server): NetHandle {
           if (client.slot === null || !room?.state) return;
           client.lastInput = { b: msg.b, x: msg.x, y: msg.y };
           client.lastInputTick = room.state.tick;
+          client.latched |= msg.b;
           return;
         }
         if (!otherBucket.take(now)) return client.close(1008, "rate limit");

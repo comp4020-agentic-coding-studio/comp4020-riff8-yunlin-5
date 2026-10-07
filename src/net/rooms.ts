@@ -28,6 +28,7 @@ export interface Client {
   slot: Slot | null;
   lastInput: Input;
   lastInputTick: number;
+  latched: number; // OR of every b received since the last tick, so a tap shorter than a tick still lands
   send(data: string): void;
   close(code: number, reason?: string): void;
 }
@@ -117,6 +118,7 @@ export class Room {
       seat.client = client;
       client.slot = s;
       client.glyph = seat.glyph;
+      client.latched = 0;
       client.lastInput = NO_INPUT; // a non-null input is what brings an absent fighter back
       client.lastInputTick = this.state?.tick ?? 0;
       this.attach(client);
@@ -235,7 +237,9 @@ export class Room {
       else if (!seat.client) inputs.push(null);
       else {
         const c = seat.client;
-        inputs.push(state.tick - c.lastInputTick > STALE_INPUT_TICKS ? NO_INPUT : c.lastInput);
+        const cur = state.tick - c.lastInputTick > STALE_INPUT_TICKS ? NO_INPUT : c.lastInput;
+        inputs.push({ b: cur.b | c.latched, x: cur.x, y: cur.y });
+        c.latched = 0;
       }
     }
     const next = step(state, inputs);
@@ -283,6 +287,7 @@ export class Room {
     // Spectators who waited out the match take free slots, oldest first.
     for (const c of this.clients) {
       if (c.slot !== null) continue;
+      if (this.seats.some((x) => x && !x.cpu && x.token === c.token)) continue; // one seal, one seat
       const slot = this.freeSlot();
       if (slot === null) break;
       this.seat(c, slot);
