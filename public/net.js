@@ -194,6 +194,7 @@ export class Net {
       tick: rt,
       phase: near.phase,
       countdown: near.countdown,
+      timeLeft: near.timeLeft, // ticks of fight left; undefined if the server doesn't send it
       fighters,
       projectiles,
     };

@@ -254,6 +254,7 @@ export class Renderer {
       this.flash *= Math.pow(0.9, sdt / 16.7);
     }
     if (view && info.showHud) this.drawHud(ctx, view);
+    if (view && view.phase === "fight") this.drawTimer(ctx, view.timeLeft);
     if (view && view.phase === "countdown" && view.countdown > 0) this.drawCountdown(ctx, view.countdown);
     if (this.banner) {
       if (now > this.banner.until) this.banner = null;
@@ -530,6 +531,22 @@ export class Renderer {
       ctx.restore();
       x += bw + gap;
     }
+  }
+
+  // Quiet m:ss in the last minute; vermilion in the last ten seconds.
+  drawTimer(ctx, ticks) {
+    if (!Number.isFinite(ticks) || ticks <= 0 || ticks > 3600) return;
+    const secs = Math.ceil(ticks / 60);
+    const txt = Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+    const hot = secs <= 10;
+    ctx.save();
+    ctx.globalAlpha = hot ? 0.95 : 0.7;
+    ctx.fillStyle = hot ? "#b5332e" : INK;
+    ctx.font = `bold ${hot ? 40 : 34}px ${SERIF}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(txt, this.W / 2, 50);
+    ctx.restore();
   }
 
   drawCountdown(ctx, cd) {

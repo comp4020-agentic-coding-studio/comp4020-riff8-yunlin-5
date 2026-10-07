@@ -15,6 +15,7 @@ if (touch) document.body.classList.add("touch");
 const renderer = new Renderer(canvas);
 const sfx = new Sfx();
 let lastCount = 0;
+let lastLeft = 0;
 const input = new Input(touchRoot);
 let welcome = null;
 let lobby = null;
@@ -147,6 +148,9 @@ function frame(now) {
       const n = view.phase === "countdown" ? Math.ceil(view.countdown / 40) : 0;
       if (n && n !== lastCount) sfx.play("tick");
       lastCount = n;
+      const left = view.phase === "fight" && Number.isFinite(view.timeLeft) ? Math.ceil(view.timeLeft / 60) : 0;
+      if (left >= 1 && left <= 5 && left !== lastLeft) sfx.play("tick");
+      lastLeft = left;
     }
   }
   renderer.draw(view, now, { showHud: phase !== "lobby", lobby: phase === "lobby" });
