@@ -139,6 +139,46 @@ export class Input {
     for (const k in this.btnEls) this.btnEls[k].classList.toggle("held", this.btnPointers[k].size > 0);
   }
 
+  // First connected pad wins; no pad (or no Gamepad API) is simply no input.
+  pollPad() {
+    const out = { b: 0, x: 0, y: 0 };
+    let pads;
+    try {
+      pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    } catch {
+      return out;
+    }
+    for (const p of pads) {
+      if (!p || !p.connected) continue;
+      const bt = (i) => !!p.buttons[i]?.pressed;
+      let ax = p.axes[0] || 0;
+      let ay = p.axes[1] || 0;
+      const mag = Math.hypot(ax, ay);
+      if (mag < 0.25) {
+        ax = 0;
+        ay = 0;
+      } else {
+        // rescale so the live range starts at the deadzone edge
+        const k = (Math.min(1, mag) - 0.25) / 0.75 / mag;
+        ax *= k;
+        ay *= k;
+      }
+      let x = Math.round(Math.max(-1, Math.min(1, ax)) * 100);
+      let y = Math.round(Math.max(-1, Math.min(1, ay)) * 100);
+      if (bt(14)) x = -100;
+      if (bt(15)) x = 100;
+      if (bt(13)) y = 100;
+      out.x = x;
+      out.y = y;
+      if (bt(0) || bt(3) || bt(12)) out.b |= BTN.jump;
+      if (bt(2)) out.b |= BTN.attack;
+      if (bt(1)) out.b |= BTN.special;
+      if (bt(4) || bt(5) || bt(6) || bt(7)) out.b |= BTN.shield;
+      break;
+    }
+    return out;
+  }
+
   poll() {
     const k = this.keys;
     let x = (k.has("right") ? 100 : 0) - (k.has("left") ? 100 : 0);
@@ -149,6 +189,10 @@ export class Input {
     if (k.has("special")) b |= BTN.special;
     if (k.has("shield")) b |= BTN.shield;
     for (const n in BTN) if (this.btnPointers[n].size) b |= BTN[n];
+    const g = this.pollPad();
+    b |= g.b;
+    if (Math.abs(g.x) > Math.abs(x)) x = g.x;
+    if (Math.abs(g.y) > Math.abs(y)) y = g.y;
     const s = this.stick;
     const mag = Math.hypot(s.x, s.y);
     if (mag > 0.2) {
