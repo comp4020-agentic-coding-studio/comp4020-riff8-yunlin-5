@@ -455,3 +455,62 @@ describe("landing and the ledge", () => {
     expect(f(s, 0).jumpsLeft).toBe(1);
   });
 });
+
+describe("cpu-only endings", () => {
+  const mk = (cpus: boolean[], seed = 1) => {
+    let s = createMatch(
+      cpus.map((cpu, i) => ({ slot: i as 0 | 1 | 2 | 3, fighter: "wanderer" as const, cpu })),
+      seed,
+      { stocks: 1 },
+    );
+    while (s.phase === "countdown") s = step(s, []);
+    return s;
+  };
+  it("ends when every human is out even if two CPUs remain; most stocks, then least damage, then lowest slot", () => {
+    let s = mk([false, true, true]);
+    s = edit(s, 1, { damage: 50 });
+    s = edit(s, 2, { damage: 20 });
+    s = edit(s, 0, { x: STAGE.blast.left - 5 });
+    s = step(s, [NO_INPUT, NO_INPUT, NO_INPUT]);
+    expect(s.phase).toBe("ended");
+    expect(s.winner).toBe(2);
+    expect(has(s, "end")).toBe(true);
+    let t = mk([false, true, true]);
+    t = edit(t, 0, { x: STAGE.blast.left - 5 });
+    t = step(t, [NO_INPUT, NO_INPUT, NO_INPUT]);
+    expect(t.winner).toBe(1); // tie on stocks and damage: lowest slot
+  });
+  it("an absent human in grace keeps the match going", () => {
+    let s = mk([false, true, true]);
+    s = step(s, [null, NO_INPUT, NO_INPUT]);
+    s = run(s, 50, [null, NO_INPUT, NO_INPUT]);
+    expect(s.phase).toBe("fight");
+  });
+  it("an all-CPU match has no human to wait for and plays on", () => {
+    let s = mk([true, true]);
+    s = run(s, 5, [NO_INPUT, NO_INPUT]);
+    expect(s.phase).toBe("fight");
+  });
+  it("two overlapped CPUs deal damage within 300 ticks", () => {
+    let s = mk([true, true]);
+    s = edit(s, 0, { x: -270, facing: -1 });
+    s = edit(s, 1, { x: -270, facing: 1 });
+    let dmg = 0;
+    for (let i = 0; i < 300 && dmg === 0; i++) {
+      s = step(s, [cpuInput(s, 0), cpuInput(s, 1)]);
+      dmg = f(s, 0).damage + f(s, 1).damage;
+    }
+    expect(dmg).toBeGreaterThan(0);
+  });
+  it("a four-CPU match ends within 20000 ticks for several seeds", () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      let s = createMatch([0, 1, 2, 3].map((i) => ({ slot: i as 0 | 1 | 2 | 3, fighter: "wanderer" as const, cpu: true })), seed, { stocks: 2 });
+      // One walk-off human stands in for the player who ends the match.
+      s = edit(s, 3, { cpu: false });
+      for (let i = 0; i < 20000 && s.phase !== "ended"; i++) {
+        s = step(s, [0, 1, 2, 3].map((k) => (k === 3 ? IN(0, 100) : cpuInput(s, k as 0 | 1 | 2 | 3))));
+      }
+      expect(s.phase, `seed ${seed}`).toBe("ended");
+    }
+  });
+});
