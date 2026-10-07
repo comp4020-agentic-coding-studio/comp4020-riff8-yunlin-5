@@ -42,11 +42,21 @@ On a laptop: A/D or the arrow keys move; W, up or space jumps (jump again in
 the air); S or down fast-falls, or drops through a platform; J attacks (hold
 a direction on the ground for a strong attack); K is your special; L shields.
 On a phone, hold it in landscape: a stick under the left thumb, buttons under
-the right.
+the right. A gamepad works too, on the standard layout: A jumps, X attacks,
+B is your special, and the shoulders shield.
+
+Pick a stage in the lobby. Riverbank has a wide ledge and three brush-stroke
+platforms. Pine cliff is a narrower cliff with a leaning pine whose branches
+are the platforms, and its side blast zones are tighter. To play alone, add a
+computer-controlled fighter from the lobby.
 
 Damage climbs as you're hit, and the more damage, the further a hit throws
 you. Get launched past the edge of the stage and you lose a stock. Everyone
-has three; the last one standing wins. Finished matches are saved (winner's
+has three; the last one standing wins. Fall just short of the edge and
+you'll catch it (the ledge assist lifts you onto the corner). Ink pots drop
+onto the stage now and then: touch one and your next 8 seconds of attacks
+deal 1.4 times the damage. A match lasts at most four minutes; if time runs
+out, the most stocks wins, then the least damage. Finished matches are saved (winner's
 seal, who fought, KOs, how long it took) and survive restarts. Rooms
 themselves don't.
 
@@ -56,15 +66,23 @@ No accounts, names, avatars or chat. Nothing a player types is ever shown to
 anyone, because there is nowhere to type. No ranked ladder, no matchmaking,
 no stats beyond the saved match history. No pausing the match for
 someone who has dropped: the others would pay for it. No way to edit or undo
-a result. Rooms don't persist; only the history does.
+a result. Rooms don't persist; only the history does. Two players on one
+keyboard and replays were both on my stretch list and I cut them on purpose:
+each person brings their own device (one seal, one seat), and a room leaves
+no trace beyond the match history. There is no client-side prediction with
+rollback either, since it would need a build step or a second copy of the
+simulation; your own fighter is simply drawn from the newest snapshot.
 
 ## What's enforced, what's judged
 
 `spec/` checks the things that can be checked: the simulation is
 deterministic, a drop followed by a return inside 15 seconds gets the fighter
 back, 900 ticks of silence ends in forfeit, bad or oversized WebSocket
-messages are rejected without taking the server down, and the home page
-explains itself without JavaScript. The colour rule in `CLAUDE.md` (a slot's ink identifies a player, vermilion asks for action or attention, links are blue, nothing else is coloured) is kept by reading, not by a test.
+messages are rejected without taking the server down, the home page
+explains itself without JavaScript, the stages' geometry holds, held buttons
+are not lost between input samples, and a second socket with the same seal
+takes the seat over (`spec/stage.test.ts`, `spec/input-latch.test.ts`,
+`spec/seat-takeover.test.ts`). The colour rule in `CLAUDE.md` (a slot's ink identifies a player, vermilion asks for action or attention, links are blue, nothing else is coloured) is kept by reading, not by a test.
 Whether the game is fun, whether the fighters feel different from one another
 and whether 15 seconds is the right grace on a phone in a real room are for
 people to judge by playing.
