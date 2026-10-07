@@ -2,6 +2,9 @@
 // never imports this (it's plain JS with no build step); the wire shapes it
 // reads are in src/net/protocol.ts, built from these.
 
+import type { StageId } from "./stage.ts";
+export type { StageId } from "./stage.ts";
+
 export type FighterId = "brush" | "carver" | "blot" | "wanderer";
 export const FIGHTER_IDS: readonly FighterId[] = ["brush", "carver", "blot", "wanderer"];
 
@@ -124,6 +127,7 @@ export interface FighterState {
   prevButtons: number; // for edge detection
   absentSince: number | null; // tick its player dropped; null while present (docs/decisions/0001)
   forfeited: boolean; // grace ran out: out of the match, stocks 0
+  inked: number; // frames left of the ink-pot boost (x1.4 damage, x1.25 base knockback)
   prevStickY: number; // for edge detection of drop-through
   lastHitBy: Slot | null; // for KO credit
   lastHitTick: number;
@@ -155,12 +159,22 @@ export type SimEvent =
   | { type: "ko"; slot: Slot; x: number; y: number; by: Slot | null }
   | { type: "respawn"; slot: Slot; x: number; y: number }
   | { type: "special"; slot: Slot }
+  | { type: "pickup"; slot: Slot; x: number; y: number }
   | { type: "jump"; slot: Slot }
   | { type: "drop"; slot: Slot }
   | { type: "back"; slot: Slot }
   | { type: "forfeit"; slot: Slot }
   | { type: "start" }
   | { type: "end"; winner: Slot | null };
+
+export interface ItemState {
+  id: number;
+  kind: "inkpot";
+  x: number;
+  y: number; // feet
+  vy: number;
+  grounded: boolean;
+}
 
 export type Phase = "countdown" | "fight" | "ended";
 
@@ -171,7 +185,10 @@ export interface MatchState {
   rng: number; // uint32 PRNG state (mulberry32 or similar), the only randomness
   fighters: (FighterState | null)[]; // length MAX_FIGHTERS, indexed by slot
   projectiles: ProjectileState[];
+  stage: StageId;
   nextId: number;
+  items: ItemState[];
+  nextItemTick: number | null; // tick of the next drop; 0 = unscheduled; null = items off
   events: SimEvent[]; // emitted by the most recent step only
   winner: Slot | null;
 }

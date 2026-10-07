@@ -1,14 +1,15 @@
 // The simulation: pure, deterministic, fixed 60 Hz. No Date, no Math.random,
 // no I/O. Randomness would come only from state.rng (mulberry32).
 import type {
-  Action, FighterDef, FighterState, HitboxDef, Input, MatchState, MoveDef, PlayerSetup, ProjectileState, Slot,
+  Action, FighterState, HitboxDef, Input, MatchState, MoveDef, PlayerSetup, ProjectileState, Slot,
 } from "./types.ts";
 import { BTN, GRACE_TICKS, MAX_FIGHTERS, NO_INPUT } from "./types.ts";
-import { STAGE } from "./stage.ts";
+import { STAGES } from "./stage.ts";
+import type { StageId } from "./stage.ts";
 import { FIGHTERS } from "./fighters/index.ts";
 
 export * from "./types.ts";
-export { STAGE } from "./stage.ts";
+export { STAGE, STAGES } from "./stage.ts";
 export { FIGHTERS } from "./fighters/index.ts";
 
 export const COUNTDOWN_TICKS = 120;
@@ -23,30 +24,45 @@ const SHIELD_DRAIN = 0.5;
 const SHIELD_REGEN = 0.3;
 const SHIELD_BREAK_STUN = 90;
 const KO_CREDIT_TICKS = 300;
+export const ITEM_INTERVAL = 900;
+export const ITEM_JITTER = 180;
+export const INK_FRAMES = 480;
+const ITEM_SPAWN_Y = -480;
+const ITEM_GRAVITY = 0.4;
+const ITEM_MAX_FALL = 8;
+const ITEM_R = 14;
+const INK_DAMAGE = 1.4;
+const INK_KNOCKBACK = 1.25;
 
 type Move = "jab" | "strong" | "aerial" | "special";
 const MOVE_ACTIONS: readonly Action[] = ["jab", "strong", "aerial", "special"];
 const isMove = (a: Action): a is Move => MOVE_ACTIONS.includes(a);
 
 interface Surface { x1: number; x2: number; y: number; solid: boolean }
-const SURFACES: Surface[] = [
-  { ...STAGE.ground, solid: true },
-  ...STAGE.platforms.map((p) => ({ ...p, solid: false })),
-];
+const SURFACE_CACHE = new Map<StageId, Surface[]>();
+function surfacesOf(id: StageId): Surface[] {
+  let list = SURFACE_CACHE.get(id);
+  if (!list) {
+    const stg = STAGES[id];
+    list = [{ ...stg.ground, solid: true }, ...stg.platforms.map((p) => ({ ...p, solid: false }))];
+    SURFACE_CACHE.set(id, list);
+  }
+  return list;
+}
 
-export function createMatch(players: PlayerSetup[], seed: number, opts: { stocks?: number } = {}): MatchState {
+export function createMatch(players: PlayerSetup[], seed: number, opts: { stocks?: number; items?: boolean; stage?: StageId } = {}): MatchState {
   const fighters: (FighterState | null)[] = Array.from({ length: MAX_FIGHTERS }, () => null);
   for (const p of players) {
-    const spawn = STAGE.spawns[p.slot];
+    const spawn = STAGES[opts.stage ?? "riverbank"].spawns[p.slot];
     fighters[p.slot] = {
       slot: p.slot, fighter: p.fighter, cpu: !!p.cpu, x: spawn.x, y: spawn.y, vx: 0, vy: 0,
       facing: spawn.x < 0 ? 1 : -1, grounded: true, jumpsLeft: 1, fastFalling: false, dropThrough: 0,
       action: "idle", actionFrame: 0, damage: 0, stocks: opts.stocks ?? 3, hitstun: 0, hitstop: 0,
       invuln: 0, shield: 100, respawnIn: 0, hitThisMove: 0, prevButtons: 0, absentSince: null,
-      forfeited: false, prevStickY: 0, lastHitBy: null, lastHitTick: -1, kos: 0, falls: 0, damageDealt: 0,
+      forfeited: false, inked: 0, prevStickY: 0, lastHitBy: null, lastHitTick: -1, kos: 0, falls: 0, damageDealt: 0,
     };
   }
-  return { tick: 0, phase: "countdown", phaseTick: 0, rng: seed >>> 0, fighters, projectiles: [], nextId: 1, events: [], winner: null };
+  return { tick: 0, phase: "countdown", phaseTick: 0, rng: seed >>> 0, fighters, projectiles: [], stage: opts.stage ?? "riverbank", nextId: 1, items: [], nextItemTick: opts.items === false ? null : 0, events: [], winner: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -67,8 +83,8 @@ function onField(f: FighterState | null): f is FighterState {
   return !!f && f.absentSince === null && !f.forfeited && f.action !== "dead";
 }
 
-function supportAt(f: FighterState): Surface | undefined {
-  return SURFACES.find((s) => s.y === f.y && f.x >= s.x1 && f.x <= s.x2);
+function supportAt(f: FighterState, stage: StageId): Surface | undefined {
+  return surfacesOf(stage).find((s) => s.y === f.y && f.x >= s.x1 && f.x <= s.x2);
 }
 
 function startMove(f: FighterState, move: Move): void {
@@ -84,8 +100,8 @@ function endMove(f: FighterState): void {
 }
 
 function respawnFighter(f: FighterState, st: MatchState, event: "respawn" | "back"): void {
-  f.x = STAGE.respawn.x;
-  f.y = STAGE.respawn.y;
+  f.x = STAGES[st.stage].respawn.x;
+  f.y = STAGES[st.stage].respawn.y;
   f.vx = 0;
   f.vy = 0;
   f.grounded = false;
@@ -100,6 +116,7 @@ function respawnFighter(f: FighterState, st: MatchState, event: "respawn" | "bac
   f.invuln = RESPAWN_INVULN;
   f.shield = 100;
   f.respawnIn = 0;
+  f.inked = 0;
   if (event === "respawn") f.damage = 0;
   if (event === "respawn") st.events.push({ type: "respawn", slot: f.slot, x: f.x, y: f.y });
   else st.events.push({ type: "back", slot: f.slot });
@@ -138,6 +155,7 @@ function updateFighter(st: MatchState, f: FighterState, input: Input): void {
   f.prevStickY = input.y;
 
   if (f.invuln > 0) f.invuln--;
+  if (f.inked > 0 && f.hitstop === 0) f.inked--;
   if (f.dropThrough > 0) f.dropThrough--;
 
   if (f.hitstop > 0) {
@@ -191,7 +209,7 @@ function updateFighter(st: MatchState, f: FighterState, input: Input): void {
           startMove(f, "strong");
         } else startMove(f, "jab");
       } else startMove(f, "aerial");
-    } else if (f.grounded && downEdge && f.y !== STAGE.ground.y && f.action !== "shield") {
+    } else if (f.grounded && downEdge && f.y !== STAGES[st.stage].ground.y && f.action !== "shield") {
       f.dropThrough = DROP_FRAMES;
       f.grounded = false;
       f.action = "fall";
@@ -262,12 +280,12 @@ function updateFighter(st: MatchState, f: FighterState, input: Input): void {
   f.y += f.vy;
   if (f.grounded) {
     f.y = prevY;
-    if (!supportAt(f)) f.grounded = false;
+    if (!supportAt(f, st.stage)) f.grounded = false;
   }
 
   if (!f.grounded) {
-    collide(f, prevX, prevY, def);
-    ledgeAssist(f, input);
+    collide(f, prevX, prevY, st.stage);
+    ledgeAssist(f, input, st.stage);
   }
 
   if (f.grounded && f.action === "aerial") endMove(f);
@@ -285,8 +303,8 @@ const LEDGE_REACH = 28;
 const LEDGE_INSET = 4;
 
 /** Lifts a fighter just below or beside a ledge onto the corner, so there's a way back. */
-function ledgeAssist(f: FighterState, input: Input): void {
-  const g = STAGE.ground;
+function ledgeAssist(f: FighterState, input: Input, stage: StageId): void {
+  const g = STAGES[stage].ground;
   if (f.grounded || f.hitstun > 0 || f.y <= g.y || f.y > g.y + LEDGE_DEPTH) return;
   const left = f.x >= g.x1 - LEDGE_REACH && f.x <= g.x1;
   const right = f.x >= g.x2 && f.x <= g.x2 + LEDGE_REACH;
@@ -303,9 +321,9 @@ function ledgeAssist(f: FighterState, input: Input): void {
   if (!isMove(f.action)) f.action = "idle";
 }
 
-function collide(f: FighterState, prevX: number, prevY: number, _def: FighterDef): void {
+function collide(f: FighterState, prevX: number, prevY: number, stage: StageId): void {
   // side wall of the solid ground block: it extends below its top surface.
-  const g = STAGE.ground;
+  const g = STAGES[stage].ground;
   // Only a fighter that was already below the top last frame: one crossing the top this
   // frame lands on it (below) instead of being pushed off.
   if (f.y > g.y && prevY > g.y && f.x > g.x1 && f.x < g.x2) {
@@ -314,7 +332,7 @@ function collide(f: FighterState, prevX: number, prevY: number, _def: FighterDef
   }
   if (f.vy < 0) return;
   let best: Surface | null = null;
-  for (const s of SURFACES) {
+  for (const s of surfacesOf(stage)) {
     if (f.x < s.x1 || f.x > s.x2) continue;
     if (!s.solid && f.dropThrough > 0) continue;
     if (prevY <= s.y && f.y >= s.y && (!best || s.y < best.y)) best = s;
@@ -360,6 +378,11 @@ function applyStrikes(st: MatchState, strikes: Strike[]): void {
   for (const s of strikes) {
     const t = s.target;
     const attacker = st.fighters[s.attacker]!;
+    const inked = attacker.inked > 0;
+    if (inked) {
+      s.damage *= INK_DAMAGE;
+      s.base *= INK_KNOCKBACK;
+    }
     const stopFrames = Math.floor(4 + s.damage / 3);
     if (t.action === "shield" && t.hitstun === 0) {
       t.shield -= s.damage * 2;
@@ -438,7 +461,7 @@ function strikeFrom(attacker: Slot, target: FighterState, hb: HitboxDef, dir: 1 
 }
 
 function stepProjectiles(st: MatchState): void {
-  const B = STAGE.blast;
+  const B = STAGES[st.stage].blast;
   st.projectiles = st.projectiles.filter((p) => {
     p.vy += p.gravity;
     p.x += p.vx;
@@ -448,8 +471,58 @@ function stepProjectiles(st: MatchState): void {
   });
 }
 
+/** Deterministic draw from the match's own PRNG (mulberry32); the sim's only use of state.rng. */
+function nextRandom(st: MatchState): number {
+  st.rng = (st.rng + 0x6d2b79f5) >>> 0;
+  let t = st.rng;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function stepItems(st: MatchState): void {
+  if (st.nextItemTick === null) return;
+  if (st.nextItemTick === 0) {
+    st.nextItemTick = st.tick + ITEM_INTERVAL + Math.round((nextRandom(st) * 2 - 1) * ITEM_JITTER);
+  } else if (st.tick >= st.nextItemTick) {
+    if (st.items.length < 1) {
+      const g = STAGES[st.stage].ground;
+      const x = Math.round(g.x1 + 30 + nextRandom(st) * (g.x2 - g.x1 - 60));
+      st.items.push({ id: st.nextId++, kind: "inkpot", x, y: ITEM_SPAWN_Y, vy: 0, grounded: false });
+    }
+    st.nextItemTick = st.tick + ITEM_INTERVAL + Math.round((nextRandom(st) * 2 - 1) * ITEM_JITTER);
+  }
+  const keep: typeof st.items = [];
+  for (const it of st.items) {
+    if (!it.grounded) {
+      const prevY = it.y;
+      it.vy = Math.min(ITEM_MAX_FALL, it.vy + ITEM_GRAVITY);
+      it.y += it.vy;
+      let best: Surface | null = null;
+      for (const s of surfacesOf(st.stage)) {
+        if (it.x < s.x1 || it.x > s.x2) continue;
+        if (prevY <= s.y && it.y >= s.y && (!best || s.y < best.y)) best = s;
+      }
+      if (best) {
+        it.y = best.y;
+        it.vy = 0;
+        it.grounded = true;
+      }
+    }
+    if (it.y > STAGES[st.stage].blast.bottom) continue;
+    const taker = st.fighters.find((f) => onField(f) && circleHitsFighter(it.x, it.y - ITEM_R, ITEM_R, f));
+    if (taker) {
+      taker.inked = INK_FRAMES;
+      st.events.push({ type: "pickup", slot: taker.slot, x: it.x, y: it.y });
+      continue;
+    }
+    keep.push(it);
+  }
+  st.items = keep;
+}
+
 function checkKOs(st: MatchState): void {
-  const B = STAGE.blast;
+  const B = STAGES[st.stage].blast;
   for (const f of st.fighters) {
     if (!onField(f)) continue;
     const cy = f.y - FIGHTERS[f.fighter].height / 2;
@@ -463,6 +536,7 @@ function checkKOs(st: MatchState): void {
     f.vx = f.vy = 0;
     f.hitstun = f.hitstop = 0;
     f.hitThisMove = 0;
+    f.inked = 0;
     f.lastHitBy = null;
     st.events.push({ type: "ko", slot: f.slot, x: f.x, y: f.y, by });
     if (by !== null) st.fighters[by]!.kos++;
@@ -523,6 +597,7 @@ export function step(state: MatchState, inputs: (Input | null | undefined)[]): M
   }
   tickRespawns(st);
   stepProjectiles(st);
+  stepItems(st);
   resolveHits(st);
   checkKOs(st);
   checkWin(st);
@@ -543,7 +618,7 @@ export function cpuInput(state: MatchState, slot: Slot): Input {
   if (!me || !onField(me) || state.phase !== "fight") return { ...NO_INPUT };
   const def = FIGHTERS[me.fighter];
   const canPress = (bit: number) => (me.prevButtons & bit) === 0;
-  const g = STAGE.ground;
+  const g = STAGES[state.stage].ground;
 
   // recovery
   const offStage = !me.grounded && (me.y > g.y - 4 && (me.x < g.x1 + 20 || me.x > g.x2 - 20 || me.y > g.y + 1));
