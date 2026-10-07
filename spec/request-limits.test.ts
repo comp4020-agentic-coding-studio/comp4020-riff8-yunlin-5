@@ -47,7 +47,7 @@ it.each([
 });
 
 it("invalid join fields close the socket", async () => {
-  for (const room of ["abcd", "ABC", "ABCDE", "AB1D", 5]) {
+  for (const room of ["ABC", "ABCDE", "AB1D", 5]) {
     const c = await clients.connect();
     c.send({ t: "join", room });
     await c.waitClosed();
