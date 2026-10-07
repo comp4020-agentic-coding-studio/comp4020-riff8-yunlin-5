@@ -145,7 +145,7 @@ export class Renderer {
     };
   }
 
-  updateCamera(view, dt) {
+  updateCamera(view, dt, lobby) {
     const live = view ? view.fighters.filter((f) => !f.out && !f.absent && f.action !== "dead") : [];
     let tx = 0;
     let ty = -120;
@@ -169,6 +169,13 @@ export class Renderer {
       tx = (x1 + x2) / 2;
       ty = (y1 + y2) / 2;
     }
+    if (lobby) {
+      // lobby: the stage sits to the right, clear of the panel
+      const side = innerWidth >= 900 && innerHeight > 420;
+      tz = side ? 0.8 : 1;
+      tx = side ? -275 : 0;
+      ty = side ? -110 : -120;
+    }
     const k = 1 - Math.pow(0.001, dt / 1000); // ~ fast ease
     const c = this.cam;
     c.x += (tx - c.x) * Math.min(1, k * 0.9);
@@ -183,7 +190,7 @@ export class Renderer {
     const frozen = now < this.freezeUntil && this.lastView;
     if (frozen) view = this.lastView;
     else this.lastView = view;
-    if (!frozen) this.updateCamera(view, dt);
+    if (!frozen) this.updateCamera(view, dt, !!info.lobby);
     const sdt = frozen ? 0 : dt;
 
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);

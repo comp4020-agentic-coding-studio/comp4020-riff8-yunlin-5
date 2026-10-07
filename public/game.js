@@ -120,7 +120,7 @@ function frame(now) {
     view = net.view(now);
     if (view) for (const ev of net.drainEvents(view.tick)) renderer.event(ev, view, now);
   }
-  renderer.draw(view, now, { showHud: phase !== "lobby" });
+  renderer.draw(view, now, { showHud: phase !== "lobby", lobby: phase === "lobby" });
 
   if (inMatch && now - lastSend >= 15) {
     lastSend = now;
