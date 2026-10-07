@@ -4,6 +4,7 @@ import { Net } from "./net.js";
 import { Renderer } from "./render.js";
 import { Input, isTouchDevice } from "./input.js";
 import { UI } from "./ui.js";
+import { Sfx } from "./audio.js";
 
 const canvas = document.getElementById("game");
 const uiRoot = document.getElementById("ui");
@@ -12,6 +13,8 @@ const touch = isTouchDevice();
 if (touch) document.body.classList.add("touch");
 
 const renderer = new Renderer(canvas);
+const sfx = new Sfx();
+let lastCount = 0;
 const input = new Input(touchRoot);
 let welcome = null;
 let lobby = null;
@@ -36,6 +39,7 @@ const net = new Net({
     const prev = phase;
     lobby = l;
     phase = l.phase;
+    if (welcome && l.you !== undefined) welcome.slot = l.you;
     if (phase === "lobby" && prev !== "lobby") {
       net.clear();
       renderer.reset();
@@ -44,6 +48,7 @@ const net = new Net({
   },
   end: (e) => {
     phase = "results";
+    sfx.play("end");
     ui.showResults(e);
   },
 });
@@ -118,7 +123,15 @@ function frame(now) {
     view = lobbyView();
   } else {
     view = net.view(now);
-    if (view) for (const ev of net.drainEvents(view.tick)) renderer.event(ev, view, now);
+    if (view) {
+      for (const ev of net.drainEvents(view.tick)) {
+        renderer.event(ev, view, now);
+        sfx.event(ev);
+      }
+      const n = view.phase === "countdown" ? Math.ceil(view.countdown / 40) : 0;
+      if (n && n !== lastCount) sfx.play("tick");
+      lastCount = n;
+    }
   }
   renderer.draw(view, now, { showHud: phase !== "lobby", lobby: phase === "lobby" });
 
@@ -141,4 +154,23 @@ requestAnimationFrame(frame);
   t.textContent = "Rotate your phone. 墨鬥 is played in landscape.";
   r.append(g, t);
   document.body.append(r);
+}
+
+// Mute toggle, remembered across visits.
+{
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "mute";
+  const paint = () => {
+    b.textContent = sfx.muted ? "音 off" : "音 on";
+    b.setAttribute("aria-pressed", String(sfx.muted));
+    b.setAttribute("aria-label", sfx.muted ? "Sound off, press to turn on" : "Sound on, press to mute");
+  };
+  b.onclick = () => {
+    sfx.unlock();
+    sfx.setMuted(!sfx.muted);
+    paint();
+  };
+  paint();
+  uiRoot.append(b);
 }

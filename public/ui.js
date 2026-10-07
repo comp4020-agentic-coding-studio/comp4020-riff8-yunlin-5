@@ -203,7 +203,7 @@ export class UI {
     this.remCpu.disabled = cpus === 0;
     const n = l.players.length;
     let note = "";
-    if (spectator) note = "The room is full. You will take a place when one opens.";
+    if (spectator) note = "You are watching. You will take a place when one opens.";
     else if (n < 2) note = "Share the link, or add a CPU, to start.";
     else if (!me?.ready) note = "Pick a fighter and press Ready.";
     else note = "Waiting for everyone to be ready.";

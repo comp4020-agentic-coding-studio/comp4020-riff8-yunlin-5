@@ -36,6 +36,7 @@ export class Renderer {
     this.freezeUntil = 0;
     this.lastView = null;
     this.banner = null; // {text, until}
+    this.spawnFx = {}; // slot -> start time of the respawn brush-stroke
     this.lastNow = 0;
     this.resize();
     addEventListener("resize", () => this.resize());
@@ -69,6 +70,7 @@ export class Renderer {
     this.shake = 0;
     this.flash = 0;
     this.lastView = null;
+    this.spawnFx = {};
     this.cam = { x: 0, y: -110, zoom: 1 };
   }
 
@@ -89,7 +91,7 @@ export class Renderer {
           vy: Math.sin(a) * sp - 1,
           life: 0,
           max: 24 + Math.random() * 26,
-          r: 1.5 + Math.random() * (2 + kb / 30),
+          r: 2.2 + Math.random() * (2.5 + kb / 25),
           c: Math.random() < 0.3 ? col(ev.attacker) : INK,
         });
       }
@@ -120,6 +122,7 @@ export class Renderer {
     } else if (ev.type === "start") {
       this.banner = { text: "墨鬥", until: now + 900 };
     } else if (ev.type === "respawn") {
+      this.spawnFx[ev.slot] = now;
       for (let i = 0; i < 10; i++)
         this.particles.push({
           x: ev.x + (Math.random() - 0.5) * 20,
@@ -242,10 +245,35 @@ export class Renderer {
       if (f.hitstop) jx = (Math.random() - 0.5) * 3;
       ctx.translate(f.x + jx, f.y);
       if (f.invuln && Math.floor(now / 70) % 2) ctx.globalAlpha = 0.45;
+      const fx = this.spawnFx[f.slot];
+      const u = fx === undefined ? 1 : Math.min(1, (now - fx) / 650);
       ctx.save();
+      if (u < 1) {
+        // the fighter is painted back in, top down, behind a falling stroke
+        ctx.beginPath();
+        ctx.rect(-50, -110, 100, 110 * u);
+        ctx.clip();
+      }
       ctx.scale(f.facing || 1, 1);
       drawFighter(ctx, f, { ink, time: view.tick });
       ctx.restore();
+      if (u < 1) {
+        ctx.save();
+        ctx.globalAlpha = 1 - u;
+        ctx.strokeStyle = ink;
+        ctx.lineCap = "round";
+        ctx.lineWidth = 7 * (1 - u) + 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -112);
+        ctx.quadraticCurveTo(5, -60, 0, -110 + 110 * u);
+        ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-26, -110 + 110 * u);
+        ctx.lineTo(26, -112 + 110 * u);
+        ctx.stroke();
+        ctx.restore();
+      } else if (fx !== undefined) delete this.spawnFx[f.slot];
       // seal tag over the head
       ctx.globalAlpha = 1;
       this.sealBox(ctx, -9, -96, 18, f.glyph, ink, 12);
