@@ -13,6 +13,7 @@ export { STAGE, STAGES } from "./stage.ts";
 export { FIGHTERS } from "./fighters/index.ts";
 
 export const COUNTDOWN_TICKS = 120;
+export const MATCH_TICKS = 4 * 60 * 60; // four minutes of "fight"
 const RESPAWN_DELAY = 90;
 const RESPAWN_INVULN = 120;
 const DROP_FRAMES = 12;
@@ -62,7 +63,7 @@ export function createMatch(players: PlayerSetup[], seed: number, opts: { stocks
       forfeited: false, inked: 0, prevStickY: 0, lastHitBy: null, lastHitTick: -1, kos: 0, falls: 0, damageDealt: 0,
     };
   }
-  return { tick: 0, phase: "countdown", phaseTick: 0, rng: seed >>> 0, fighters, projectiles: [], stage: opts.stage ?? "riverbank", nextId: 1, items: [], nextItemTick: opts.items === false ? null : 0, events: [], winner: null };
+  return { tick: 0, phase: "countdown", phaseTick: 0, rng: seed >>> 0, fighters, projectiles: [], fightTicksLeft: MATCH_TICKS, stage: opts.stage ?? "riverbank", nextId: 1, items: [], nextItemTick: opts.items === false ? null : 0, events: [], winner: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -558,13 +559,14 @@ function checkWin(st: MatchState): void {
   const alive = present.filter((f) => f.stocks > 0 && !f.forfeited);
   const humans = present.filter((f) => !f.cpu);
   const humansOut = humans.length > 0 && humans.every((f) => f.stocks <= 0 || f.forfeited);
-  if ((alive.length <= 1 && !present.some(inGrace)) || humansOut) {
+  const timeUp = st.fightTicksLeft <= 0;
+  if ((alive.length <= 1 && !present.some(inGrace)) || humansOut || timeUp) {
     st.phase = "ended";
     st.phaseTick = 0;
     if (alive.length === 1) st.winner = alive[0].slot;
     else if (alive.length === 0) st.winner = null;
     else {
-      // Only CPUs remain: most stocks, then least damage, then lowest slot.
+      // Time up or only CPUs remain: most stocks, then least damage, then lowest slot.
       const ranked = [...alive].sort((a, b) => b.stocks - a.stocks || a.damage - b.damage || a.slot - b.slot);
       st.winner = ranked[0].slot;
     }
@@ -591,6 +593,7 @@ export function step(state: MatchState, inputs: (Input | null | undefined)[]): M
     return st;
   }
 
+  st.fightTicksLeft = Math.max(0, st.fightTicksLeft - 1);
   for (const f of st.fighters) {
     if (!onField(f)) continue;
     updateFighter(st, f, inputs[f.slot] ?? NO_INPUT);

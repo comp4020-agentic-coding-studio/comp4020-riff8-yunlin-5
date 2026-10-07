@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  BTN, FIGHTERS, GRACE_TICKS, STAGES, INK_FRAMES, ITEM_INTERVAL, ITEM_JITTER, NO_INPUT, STAGE, cpuInput, createMatch, hashState, knockback, step,
+  BTN, FIGHTERS, GRACE_TICKS, MATCH_TICKS, STAGES, INK_FRAMES, ITEM_INTERVAL, ITEM_JITTER, NO_INPUT, STAGE, cpuInput, createMatch, hashState, knockback, step,
 } from "../src/sim/index.ts";
 import type { Input, MatchState } from "../src/sim/index.ts";
 
@@ -694,5 +694,65 @@ describe("second stage: pinecliff", () => {
     expect(go("pinecliff")).toBe(go("pinecliff"));
     expect(go("riverbank")).toBe(go("riverbank"));
     expect(go("pinecliff")).not.toBe(go("riverbank"));
+  });
+});
+
+describe("match time limit", () => {
+  const mk = (n = 3) => {
+    let s = createMatch(Array.from({ length: n }, (_, i) => ({ slot: i as 0 | 1 | 2, fighter: "wanderer" as const })), 4, { items: false });
+    return s;
+  };
+  const none = [NO_INPUT, NO_INPUT, NO_INPUT];
+  it("the countdown does not consume the clock", () => {
+    let s = mk();
+    s = run(s, 119, none);
+    expect(s.fightTicksLeft).toBe(MATCH_TICKS);
+    s = step(s, none);
+    expect(s.phase).toBe("fight");
+    expect(s.fightTicksLeft).toBe(MATCH_TICKS);
+    s = step(s, none);
+    expect(s.fightTicksLeft).toBe(MATCH_TICKS - 1);
+  });
+  it("time-up ends the match: most stocks wins", () => {
+    let s = fight(3);
+    s = edit(s, 0, { stocks: 2 });
+    s = edit(s, 1, { stocks: 3, damage: 80 });
+    s = edit(s, 2, { stocks: 1 });
+    s.fightTicksLeft = 1;
+    s = step(s, none);
+    expect(s.phase).toBe("ended");
+    expect(s.winner).toBe(1);
+    expect(has(s, "end")).toBe(true);
+  });
+  it("ties on stocks go to least damage, then lowest slot", () => {
+    let s = fight(3);
+    s = edit(s, 0, { damage: 60 });
+    s = edit(s, 1, { damage: 20 });
+    s = edit(s, 2, { damage: 20 });
+    s.fightTicksLeft = 1;
+    expect(step(s, none).winner).toBe(1);
+    s = edit(s, 0, { damage: 20 });
+    expect(step(s, none).winner).toBe(0);
+  });
+  it("an absent fighter in grace is ranked like everyone else", () => {
+    let s = fight(3);
+    s = edit(s, 0, { damage: 90 });
+    s = step(s, [NO_INPUT, null, NO_INPUT]);
+    s.fightTicksLeft = 1;
+    s = step(s, [NO_INPUT, null, NO_INPUT]);
+    expect(s.phase).toBe("ended");
+    expect(s.winner).toBe(1);
+  });
+  it("a full-length match runs out of time deterministically", () => {
+    const go = () => {
+      let s = createMatch([{ slot: 0, fighter: "wanderer" }, { slot: 1, fighter: "wanderer" }], 2, { items: false });
+      s = edit(s, 0, { stocks: 99, cpu: true });
+      s = edit(s, 1, { stocks: 99, cpu: true });
+      for (let i = 0; i < 120 + MATCH_TICKS + 5 && s.phase !== "ended"; i++) s = step(s, [cpuInput(s, 0), cpuInput(s, 1)]);
+      expect(s.phase).toBe("ended");
+      expect(s.fightTicksLeft).toBe(0);
+      return hashState(s);
+    };
+    expect(go()).toBe(go());
   });
 });
