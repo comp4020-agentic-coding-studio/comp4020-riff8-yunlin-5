@@ -549,10 +549,18 @@ function tickRespawns(st: MatchState): void {
 function checkWin(st: MatchState): void {
   const present = st.fighters.filter((f): f is FighterState => !!f);
   const alive = present.filter((f) => f.stocks > 0 && !f.forfeited);
-  if (alive.length <= 1 && !present.some(inGrace)) {
+  const humans = present.filter((f) => !f.cpu);
+  const humansOut = humans.length > 0 && humans.every((f) => f.stocks <= 0 || f.forfeited);
+  if ((alive.length <= 1 && !present.some(inGrace)) || humansOut) {
     st.phase = "ended";
     st.phaseTick = 0;
-    st.winner = alive.length === 1 ? alive[0].slot : null;
+    if (alive.length === 1) st.winner = alive[0].slot;
+    else if (alive.length === 0) st.winner = null;
+    else {
+      // Only CPUs remain: most stocks, then least damage, then lowest slot.
+      const ranked = [...alive].sort((a, b) => b.stocks - a.stocks || a.damage - b.damage || a.slot - b.slot);
+      st.winner = ranked[0].slot;
+    }
     st.events.push({ type: "end", winner: st.winner });
   }
 }
@@ -637,8 +645,14 @@ export function cpuInput(state: MatchState, slot: Slot): Input {
 
   const reach = 75 + def.width / 2;
   if (Math.abs(dx) < reach && Math.abs(dy) < 70) {
+    const overlapped = Math.abs(dx) < 4;
+    const facingTarget = overlapped || me.facing === (dx >= 0 ? 1 : -1);
     if (me.grounded) {
-      if (canPress(BTN.ATTACK) && n < 250) return { b: BTN.ATTACK, x: n < 100 ? dir : 0, y: 0 };
+      // Turn to face the target before swinging.
+      if (!facingTarget) return { b: 0, x: dir, y: 0 };
+      if (canPress(BTN.ATTACK) && n < 250) return { b: BTN.ATTACK, x: n < 100 && !overlapped ? dir : 0, y: 0 };
+      // Exactly overlapped and not swinging: step apart so the next swing has room.
+      if (overlapped) return { b: 0, x: slot % 2 === 0 ? 100 : -100, y: 0 };
       return { b: 0, x: dx >= 0 ? 20 : -20, y: 0 };
     }
     if (canPress(BTN.ATTACK) && n < 300) return { b: BTN.ATTACK, x: dir / 2, y: 0 };
