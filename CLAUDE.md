@@ -49,10 +49,13 @@ first, in the same commit.
   escape a handler or the game loop.
 - `src/sim/` stays pure and deterministic: no `Date`, `Math.random` or I/O.
 - `/` explains itself without JavaScript.
-- One accent colour, vermilion `--seal`, the colour of the seal stamp. Don't
-  add a second colour; if `--seal` starts meaning several unrelated things,
-  the design has drifted. Grep for every use before claiming otherwise.
-- A player who drops gets the 15 s grace in
+- Colour carries identity: each slot has one ink colour (`SLOT_COLOURS` in
+  `public/render.js`), used for that player's marks. Everything else is ink
+  on paper, with vermilion (`--seal`) also used for the primary button, focus
+  rings and damage heat. Add no decorative colour; grep for every use of a
+  colour before claiming what it means.
+- A player who drops gets the 15 s grace, and a fresh socket with the same
+  seal takes the seat over, per
   `docs/decisions/0001-grace-then-forfeit-on-drop.md`. Change that file
   before changing the behaviour.
 - When a check finds a real bug, the fix is a new `spec/` test or a rule in

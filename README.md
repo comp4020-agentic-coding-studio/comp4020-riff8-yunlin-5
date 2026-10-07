@@ -20,14 +20,12 @@ under a second, because a delay that long is the difference between "I hit
 you" and "the game says I did". The server decides everything and the clients
 smooth over the gaps by drawing slightly in the past.
 
-The part that took the most thought is the dropped phone. Phones drop, and a
-match for four shouldn't be wrecked because one of them did. A player who
+The part that took the most thought is the dropped phone. Phones drop, and a match for four shouldn't be wrecked because one of them did. A player who
 vanishes gets a grace period to come back as themselves, and the room can see
 it happening. That falls out of the world this repo already had: a handscroll
 is a shared object that many people have marked over time, each with a seal
-and no biography. [Bernie DeKoven's book page](https://www.deepfun.com/fun-store/the-well-played-game/)
-quotes readers on the same idea, that "the point of the game is the valuing
-of the other people you share it with". Presence without identity is enough
+and no biography. The game is a way of being together, so
+the room matters more than the result. Presence without identity is enough
 to do that: the same seal coming back is the same person.
 
 ## How to play
@@ -35,8 +33,10 @@ to do that: the same seal coming back is the same person.
 Open the page, make a room, and send the four-letter link (`/r/ABCD`) to the
 people you're with. Up to four can fight, humans or computer-controlled;
 anyone beyond that watches, and anyone who arrives mid-match watches until
-the next one. There are four fighters: a heavy brush-master, a light, fast
-seal-carver, an ink-blot zoner and an all-rounder.
+the next one. There are four fighters: Great Brush (巨筆), the heavy brush-master; Seal
+Carver (刻印), light and fast, with a dashing special; Ink Blot (潑墨), a zoner
+whose special is arcing ink blots; and Wanderer (遊士), the all-rounder with
+a staff.
 
 On a laptop: A/D or the arrow keys move; W, up or space jumps (jump again in
 the air); S or down fast-falls, or drops through a platform; J attacks (hold
@@ -64,8 +64,8 @@ a result. Rooms don't persist; only the history does.
 deterministic, a drop followed by a return inside 15 seconds gets the fighter
 back, 900 ticks of silence ends in forfeit, bad or oversized WebSocket
 messages are rejected without taking the server down, and the home page
-explains itself without JavaScript. The single accent colour is a rule in
-`CLAUDE.md`, kept by reading, not by a test.
+explains itself without JavaScript. The rule that colour identifies a player and
+nothing decorative is added lives in `CLAUDE.md`, kept by reading, not by a test.
 Whether the game is fun, whether the fighters feel different from one another
 and whether 15 seconds is the right grace on a phone in a real room are for
 people to judge by playing.

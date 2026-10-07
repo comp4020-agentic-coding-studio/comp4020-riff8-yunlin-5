@@ -1,6 +1,6 @@
 # 0001: grace, then forfeit, when a player drops
 
-Status: accepted. Decided before the build, so the code follows it.
+Status: accepted. 2026-10-07.
 
 ## Context
 
@@ -10,7 +10,7 @@ the browser's back gesture. Something has to happen to that player's fighter,
 and whatever it is, it is a rule of the game, not an implementation detail.
 The README's argument for what good means here:
 
-> a dropped phone shouldn't wreck a match for everyone.
+> Phones drop, and a match for four shouldn't be wrecked because one of them did.
 
 The fighter must not stand there being hit by people who can see their friend
 fumbling for a signal, and the other three must not be held hostage by one
@@ -34,6 +34,10 @@ grace period (900 ticks of the 60 Hz sim):
   carries on without them;
 - the match cannot end while anyone is in grace, so a drop never hands anyone
   a win by default before the 15 seconds are up.
+
+- a fresh socket with the same seal takes the seat over and the old socket is
+  closed, because a phone switching from wifi to 4G can leave a half-open
+  socket alive for longer than the grace period.
 
 The server keeps a token-to-slot map to match returning cookies. It never
 sends it.
@@ -78,6 +82,8 @@ more often than laptops.
   (15 seconds, then forfeit) and visible (the faint seal and countdown tell
   the whole room what happened), which is the deterrent a room of friends
   needs.
+- One browser is one seat per room: two tabs in the same browser cannot both
+  play (use another browser or profile).
 - The server holds a token-to-slot map for the life of the room. It never
   leaves the server.
 
@@ -86,6 +92,8 @@ more often than laptops.
 - `spec/drop-reclaim.test.ts`: a scripted WebSocket client drops, then
   reconnects with the same seal cookie within the grace period and gets its
   fighter back.
+- `spec/seat-takeover.test.ts`: a second socket with the same seal takes the
+  seat and the first is closed.
 - `spec/sim.test.ts`: 900 ticks of null input from an absent fighter end in
   forfeit and the other fighter wins.
 
