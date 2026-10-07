@@ -45,6 +45,15 @@ On a phone, hold it in landscape: a stick under the left thumb, buttons under
 the right. A gamepad works too, on the standard layout: A jumps, X attacks,
 B is your special, and the shoulders shield.
 
+Two people can share one device: in the lobby, "Add a second player here"
+seats a local guest with their own seal glyph. With a guest, the first player
+uses WASD (W or space jumps), J attacks, K is special and L shields; the
+second uses the arrows (up jumps, down fast-falls), `,` to attack, `.` for
+special and `/` or right shift to shield. A second gamepad drives the guest.
+After a match, "Watch the last match" in the lobby replays it from the inputs
+the server recorded; the simulation is deterministic, so the replay is exact.
+Only the last match per room is kept, and nothing outlives the room.
+
 Pick a stage in the lobby. Riverbank has a wide ledge and three brush-stroke
 platforms. Pine cliff is a narrower cliff with a leaning pine whose branches
 are the platforms, and its side blast zones are tighter. To play alone, add a
@@ -66,12 +75,10 @@ No accounts, names, avatars or chat. Nothing a player types is ever shown to
 anyone, because there is nowhere to type. No ranked ladder, no matchmaking,
 no stats beyond the saved match history. No pausing the match for
 someone who has dropped: the others would pay for it. No way to edit or undo
-a result. Rooms don't persist; only the history does. Two players on one
-keyboard and replays were both on my stretch list and I cut them on purpose:
-each person brings their own device (one seal, one seat), and a room leaves
-no trace beyond the match history. There is no client-side prediction with
-rollback either, since it would need a build step or a second copy of the
-simulation; your own fighter is simply drawn from the newest snapshot.
+a result. Rooms don't persist; only the history does. There is no
+client-side prediction with rollback: it would need a build step or a second
+copy of the simulation, so your own fighter is simply drawn from the newest
+snapshot.
 
 ## What's enforced, what's judged
 
@@ -82,7 +89,8 @@ messages are rejected without taking the server down, the home page
 explains itself without JavaScript, picking a stage in the lobby changes
 where the fighters stand, a tap shorter than one tick of the simulation
 still lands, and a second socket with the same seal takes the seat over (`spec/stage.test.ts`, `spec/input-latch.test.ts`,
-`spec/seat-takeover.test.ts`). The colour rule in `CLAUDE.md` (a slot's ink
+`spec/seat-takeover.test.ts`), a local guest seat works (`spec/guest.test.ts`), and
+a replay's final frame equals the live match's last frame (`spec/replay.test.ts`). The colour rule in `CLAUDE.md` (a slot's ink
 identifies a player, vermilion asks for action or attention, links are blue,
 nothing else is coloured) is kept by reading, not by a test.
 Whether the game is fun, whether the fighters feel different from one another
