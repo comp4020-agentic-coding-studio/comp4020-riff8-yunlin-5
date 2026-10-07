@@ -1,8 +1,8 @@
 // Rooms: lobby, match, results. Pure bookkeeping around the sim; the socket
 // layer (socket.ts) only moves bytes in and out of Client objects.
 import { randomBytes, randomInt } from "node:crypto";
-import type { FighterId, Input, MatchState, SimEvent, Slot } from "../sim/index.ts";
-import { createMatch, cpuInput, step, FIGHTERS, NO_INPUT, STAGE } from "../sim/index.ts";
+import type { FighterId, Input, MatchState, SimEvent, Slot, StageId } from "../sim/index.ts";
+import { createMatch, cpuInput, step, FIGHTERS, NO_INPUT, STAGES } from "../sim/index.ts";
 import { recordMatch } from "../db.ts";
 import { sealGlyph } from "../seal.ts";
 import { buildResults, buildSnap } from "./protocol.ts";
@@ -52,6 +52,7 @@ export class Room {
   clients = new Set<Client>();
   seats: (Seat | null)[] = [null, null, null, null];
   phase: RoomPhase = "lobby";
+  stage: StageId = "riverbank";
   state: MatchState | null = null;
   emptySince: number | null;
   private pending: SimEvent[] = [];
@@ -171,6 +172,12 @@ export class Room {
     this.maybeStart();
   }
 
+  setStage(client: Client, id: StageId): void {
+    if (this.phase !== "lobby" || !this.mySeat(client)) return;
+    this.stage = id;
+    this.broadcastLobby();
+  }
+
   setCpu(client: Client, add: boolean): void {
     if (this.phase !== "lobby" || !this.mySeat(client)) return;
     if (add) {
@@ -215,6 +222,7 @@ export class Room {
         return seat ? [{ slot: s, fighter: seat.fighter, cpu: seat.cpu }] : [];
       }),
       randomBytes(4).readUInt32BE(0),
+      { stage: this.stage },
     );
     this.pending = [];
     this.phase = "match";
@@ -265,6 +273,7 @@ export class Room {
         state.tick,
         w ? { glyph: w.glyph, fighter: w.fighter } : null,
         results.map((r) => ({ glyph: r.glyph, fighter: r.fighter, kos: r.kos, falls: r.falls, placement: r.placement })),
+        state.stage,
       );
     } catch (err) {
       console.error("recordMatch failed", err);
@@ -312,6 +321,9 @@ export class Room {
         const present = (seat.cpu || seat.client !== null) && !f?.forfeited;
         return [{ slot: s, glyph: seat.glyph, fighter: seat.fighter, ready: seat.ready, cpu: seat.cpu, present }];
       }),
+      stage: this.stage,
+      stages: Object.values(STAGES).map((g) => ({ id: g.id, name: g.name })),
+      stageDef: STAGES[this.stage],
       spectators: this.spectators,
       you: client.slot, // which entry of players is this socket (changes on promotion)
     });
@@ -395,7 +407,7 @@ export function welcomeMessage(client: Client, room: Room, rejoined: boolean): s
     slot: client.slot,
     glyph: client.glyph,
     rejoined,
-    stage: STAGE,
+    stage: STAGES[room.stage],
     fighters: Object.values(FIGHTERS).map((f) => ({ id: f.id, name: f.name })),
     tickRate: 60,
     snapRate: 30,

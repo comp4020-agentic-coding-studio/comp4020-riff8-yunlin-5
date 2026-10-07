@@ -34,8 +34,9 @@ function historyList(matches: MatchRecord[]): string {
   if (matches.length === 0) return `<p class="empty-note">No matches yet. The scroll is blank.</p>`;
   const items = matches.map((m) => {
     const who = m.winnerGlyph ? `${escapeHtml(m.winnerGlyph)} won with ${escapeHtml(m.winnerFighter ?? "?")}` : "no winner";
+    const where = m.stage ? ` on ${escapeHtml(m.stage)}` : "";
     const roster = m.players.map((p) => `${escapeHtml(p.glyph)} ${escapeHtml(p.fighter)}`).join(", ");
-    return `<li>${who} <span class="history-roster">(${roster})</span></li>`;
+    return `<li>${who}${where} <span class="history-roster">(${roster})</span></li>`;
   });
   return `<ol class="history-list">\n          ${items.join("\n          ")}\n        </ol>`;
 }
