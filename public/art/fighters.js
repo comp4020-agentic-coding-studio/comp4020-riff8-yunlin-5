@@ -67,7 +67,7 @@ function attackAngle(id, a, fr) {
     if (fr < 12) return lerp(-60 * D, -165 * D, ease(fr / 12));
     return lerp(-165 * D, -10 * D, ease(clamp01((fr - 12) / 5)));
   }
-  return -90 * D; // wanderer: staff rising
+  return -8 * D; // wanderer: staff thrust, sending a wave
 }
 
 function drawTool(ctx, id, c, hx, hy, ang, ink, fr, a) {
@@ -313,8 +313,8 @@ export function drawFighter(ctx, f, opts = {}) {
   } else if (attacking) {
     lean = a === "strong" ? 10 : a === "special" && id === "carver" ? 18 : 5;
     crouch = a === "strong" ? 4 : 0;
-    legA = a === "aerial" || (a === "special" && id === "wanderer") ? [10, -14] : [14, 0];
-    legB = a === "aerial" || (a === "special" && id === "wanderer") ? [-10, -14] : [-14, 0];
+    legA = a === "aerial" ? [10, -14] : [14, 0];
+    legB = a === "aerial" ? [-10, -14] : [-14, 0];
     toolAng = attackAngle(id, a, fr);
     armB = [-14, -40];
     if (a === "special" && id === "carver") armB = [-24, -30];

@@ -46,7 +46,7 @@ const blot: FighterDef = {
   },
 };
 
-// 遊 Wanderer: scholar with a staff, middling everything; rising staff special.
+// 遊 Wanderer: scholar with a staff, middling everything; a short staff-wave special.
 const wanderer: FighterDef = {
   id: "wanderer", name: "Wanderer 遊士", weight: 100, walkSpeed: 4, airSpeed: 3.6, jumpVel: 11,
   doubleJumpVel: 10, gravity: 0.55, maxFall: 10, fastFall: 15, width: 34, height: 70,
@@ -55,8 +55,8 @@ const wanderer: FighterDef = {
     strong: { frames: 34, hitboxes: [{ start: 11, end: 15, x: 50, y: -38, r: 22, damage: 11, base: 30, growth: 100, angle: 40 }] },
     aerial: { frames: 28, hitboxes: [{ start: 6, end: 15, x: 36, y: -34, r: 26, damage: 8, base: 20, growth: 85, angle: 45 }] },
     special: {
-      frames: 36, impulse: { frame: 6, vx: 1, vy: -9 },
-      hitboxes: [{ start: 7, end: 16, x: 18, y: -62, r: 26, damage: 9, base: 30, growth: 90, angle: 80 }],
+      frames: 34, hitboxes: [],
+      projectile: { frame: 10, x: 40, y: -38, vx: 8, vy: 0, gravity: 0, life: 22, r: 14, damage: 6, base: 20, growth: 60, angle: 25 },
     },
   },
 };
