@@ -21,7 +21,7 @@ const carver: FighterDef = {
   doubleJumpVel: 11, gravity: 0.6, maxFall: 11, fastFall: 17, width: 28, height: 56,
   moves: {
     jab: { frames: 11, hitboxes: [{ start: 2, end: 4, x: 22, y: -30, r: 14, damage: 3, base: 14, growth: 45, angle: 35 }] },
-    strong: { frames: 22, hitboxes: [{ start: 6, end: 9, x: 28, y: -28, r: 16, damage: 7, base: 22, growth: 80, angle: 40 }] },
+    strong: { frames: 22, hitboxes: [{ start: 6, end: 9, x: 28, y: -28, r: 16, damage: 7, base: 24, growth: 100, angle: 48 }] },
     aerial: { frames: 18, hitboxes: [{ start: 3, end: 10, x: 18, y: -28, r: 20, damage: 6, base: 16, growth: 70, angle: 50 }] },
     special: {
       frames: 28, impulse: { frame: 5, vx: 11, vy: 0 },
