@@ -28,6 +28,7 @@ export class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.stage = DEFAULT_STAGE;
+    this.W = 960;
     this.cam = { x: 0, y: -110, zoom: 1 };
     this.particles = [];
     this.marks = [];
@@ -46,8 +47,10 @@ export class Renderer {
   resize() {
     const vw = innerWidth;
     const vh = innerHeight;
-    const s = Math.min(vw / W, vh / H);
-    const cw = Math.floor(W * s);
+    // logical width follows the viewport's aspect (16:9 to 21:9) so phones fill the screen
+    this.W = Math.round(H * Math.max(16 / 9, Math.min(21 / 9, vw / vh)));
+    const s = Math.min(vw / this.W, vh / H);
+    const cw = Math.floor(this.W * s);
     const ch = Math.floor(H * s);
     const dpr = Math.min(devicePixelRatio || 1, 2.5);
     const c = this.canvas;
@@ -57,7 +60,7 @@ export class Renderer {
     c.style.top = Math.floor((vh - ch) / 2) + "px";
     c.width = Math.max(1, Math.round(cw * dpr));
     c.height = Math.max(1, Math.round(ch * dpr));
-    this.scale = c.width / W;
+    this.scale = c.width / this.W;
   }
 
   setStage(s) {
@@ -140,7 +143,7 @@ export class Renderer {
   // world point -> nearest on-screen world point (for KOs past the blast edge)
   clampToView(x, y) {
     const c = this.cam;
-    const hw = W / 2 / c.zoom - 30;
+    const hw = this.W / 2 / c.zoom - 30;
     const hh = H / 2 / c.zoom - 30;
     return {
       x: Math.max(c.x - hw, Math.min(c.x + hw, x)),
@@ -168,7 +171,7 @@ export class Renderer {
       y2 = Math.max(y2, 60);
       const w = x2 - x1 + 280;
       const h = y2 - y1 + 220;
-      tz = Math.max(0.55, Math.min(1.15, Math.min(W / w, H / h)));
+      tz = Math.max(0.55, Math.min(1.15, Math.min(this.W / w, H / h)));
       tx = (x1 + x2) / 2;
       ty = (y1 + y2) / 2;
       // never let the camera leave the stage behind
@@ -200,7 +203,7 @@ export class Renderer {
     const sdt = frozen ? 0 : dt;
 
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
-    drawBackdrop(ctx, this.cam, now);
+    drawBackdrop(ctx, this.cam, now, this.W);
 
     // world
     let sx = 0, sy = 0;
@@ -211,7 +214,7 @@ export class Renderer {
     this.shake *= Math.pow(0.88, sdt / 16.7);
     const z = this.cam.zoom;
     ctx.save();
-    ctx.translate(W / 2 + sx, H / 2 + sy);
+    ctx.translate(this.W / 2 + sx, H / 2 + sy);
     ctx.scale(z, z);
     ctx.translate(-this.cam.x, -this.cam.y);
     drawStage(ctx, this.stage);
@@ -225,7 +228,7 @@ export class Renderer {
     if (view) this.drawOffscreen(ctx, view);
     if (this.flash > 0.01) {
       ctx.fillStyle = `rgba(255,252,240,${this.flash})`;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0, 0, this.W, H);
       this.flash *= Math.pow(0.9, sdt / 16.7);
     }
     if (view && info.showHud) this.drawHud(ctx, view);
@@ -365,10 +368,10 @@ export class Renderer {
     const c = this.cam;
     for (const f of view.fighters) {
       if (f.absent || f.out || f.action === "dead") continue;
-      const px = W / 2 + (f.x - c.x) * c.zoom;
+      const px = this.W / 2 + (f.x - c.x) * c.zoom;
       const py = H / 2 + (f.y - 35 - c.y) * c.zoom;
-      if (px > 0 && px < W && py > 0 && py < H) continue;
-      const ex = Math.max(26, Math.min(W - 26, px));
+      if (px > 0 && px < this.W && py > 0 && py < H) continue;
+      const ex = Math.max(26, Math.min(this.W - 26, px));
       const ey = Math.max(26, Math.min(H - 26, py));
       ctx.globalAlpha = 0.85;
       this.sealBox(ctx, ex - 13, ey - 13, 26, f.glyph, SLOT_COLOURS[f.slot] || INK, 17);
@@ -380,9 +383,9 @@ export class Renderer {
     const fs = view.fighters.filter((f) => f);
     const n = fs.length;
     const bw = 190;
-    const gap = Math.min(30, (W - 40 - n * bw) / Math.max(1, n - 1));
+    const gap = Math.min(30, (this.W - 40 - n * bw) / Math.max(1, n - 1));
     const total = n * bw + (n - 1) * gap;
-    let x = (W - total) / 2;
+    let x = (this.W - total) / 2;
     const y = H - 70;
     for (const f of fs) {
       const col = SLOT_COLOURS[f.slot] || INK;
@@ -435,7 +438,7 @@ export class Renderer {
     const n = Math.ceil(cd / 40);
     const u = 1 - (cd % 40 || 40) / 40;
     ctx.save();
-    ctx.translate(W / 2, H / 2 - 30);
+    ctx.translate(this.W / 2, H / 2 - 30);
     ctx.scale(1 + u * 0.25, 1 + u * 0.25);
     ctx.globalAlpha = 1 - u * 0.6;
     ctx.fillStyle = INK;
@@ -449,7 +452,7 @@ export class Renderer {
   drawBanner(ctx, b, now) {
     const u = 1 - (b.until - now) / 900;
     ctx.save();
-    ctx.translate(W / 2, H / 2 - 30);
+    ctx.translate(this.W / 2, H / 2 - 30);
     ctx.globalAlpha = Math.max(0, 1 - u * u);
     ctx.scale(1 + u * 0.3, 1 + u * 0.3);
     ctx.fillStyle = "#b5332e";

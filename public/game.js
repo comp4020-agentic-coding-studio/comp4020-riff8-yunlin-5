@@ -21,11 +21,24 @@ let lobby = null;
 let phase = "lobby";
 
 const net = new Net({
-  open: () => ui.setStatus(""),
+  open: () => {
+    ui.setStatus("");
+    ui.hideBlocked();
+  },
   close: (final) => {
     if (!final) ui.setStatus("Connection lost. Reconnecting...");
   },
-  error: (m) => ui.setStatus(m.message || "Could not join this room."),
+  error: (m) => {
+    const again = () => {
+      ui.hideBlocked();
+      ui.setStatus("Connecting...");
+      net.reconnect();
+    };
+    if (m.code === "replaced") ui.showBlocked("This seal is playing in another tab.", "Play here", again);
+    else if (m.code === "room_full") ui.showBlocked("This room is full.", "Try again", again);
+    else if (m.code === "rooms_full") ui.showBlocked("Every scroll is in use right now. Try again in a moment.", "Try again", again);
+    else ui.showBlocked(m.message || "Could not join this room.", "Try again", again);
+  },
   reset: () => renderer.reset(),
   welcome: (w) => {
     welcome = w;

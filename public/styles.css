@@ -614,3 +614,20 @@ noscript a {
 .mute:focus-visible {
   outline: 2px solid var(--seal);
 }
+
+.blocked {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgb(243 239 228 / 80%);
+}
+
+.blocked-panel {
+  text-align: center;
+  width: min(380px, calc(100vw - 24px));
+}
+
+.blocked-text {
+  margin: 0 0 14px;
+  font-size: 1.1rem;
+}

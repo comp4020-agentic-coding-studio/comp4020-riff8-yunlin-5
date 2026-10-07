@@ -69,19 +69,19 @@ function build(stage) {
 }
 
 // Screen-space backdrop (logical 960x540), drawn before the camera transform.
-export function drawBackdrop(ctx, cam, time) {
+export function drawBackdrop(ctx, cam, time, W = 960) {
   ctx.fillStyle = PAPER;
-  ctx.fillRect(0, 0, 960, 540);
+  ctx.fillRect(0, 0, W, 540);
   // soft paper vignette
-  const vg = ctx.createRadialGradient(480, 270, 200, 480, 270, 620);
+  const vg = ctx.createRadialGradient(W / 2, 270, 200, W / 2, 270, 620 + (W - 960) / 2);
   vg.addColorStop(0, "rgba(255,252,240,0)");
   vg.addColorStop(1, "rgba(150,130,90,0.16)");
   ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, 960, 540);
+  ctx.fillRect(0, 0, W, 540);
   // pale moon
   ctx.fillStyle = "rgba(31,27,22,0.06)";
   ctx.beginPath();
-  ctx.arc(700 - cam.x * 0.02, 120 - cam.y * 0.01, 46, 0, Math.PI * 2);
+  ctx.arc(W * 0.73 - cam.x * 0.02, 120 - cam.y * 0.01, 46, 0, Math.PI * 2);
   ctx.fill();
   if (!cache) return;
   for (const m of cache.mountains) {
@@ -90,8 +90,8 @@ export function drawBackdrop(ctx, cam, time) {
     ctx.fillStyle = `rgba(31,27,22,${m.a})`;
     ctx.beginPath();
     ctx.moveTo(-60, 560);
-    for (let i = 0; i <= n; i++) ctx.lineTo(off + (i / n) * 1100, m.pts[i] - cam.y * m.par * 0.5 - 40);
-    ctx.lineTo(1100, 560);
+    for (let i = 0; i <= n; i++) ctx.lineTo(off + (i / n) * (W + 140), m.pts[i] - cam.y * m.par * 0.5 - 40);
+    ctx.lineTo(W + 140, 560);
     ctx.closePath();
     ctx.fill();
     // mist band under each ridge
@@ -100,7 +100,7 @@ export function drawBackdrop(ctx, cam, time) {
     mg.addColorStop(0, "rgba(243,239,228,0)");
     mg.addColorStop(1, "rgba(243,239,228,0.5)");
     ctx.fillStyle = mg;
-    ctx.fillRect(0, my - 60, 960, 80);
+    ctx.fillRect(0, my - 60, W, 80);
   }
 }
 

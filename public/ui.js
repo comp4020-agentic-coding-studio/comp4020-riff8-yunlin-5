@@ -103,7 +103,30 @@ export class UI {
     this.badge = h("div", "badge");
     this.badge.hidden = true;
 
-    r.append(this.status, this.lobbyEl, this.resultsEl, this.badge);
+    // quiet full-screen notice with one button (replaced seat, room full)
+    this.blockedEl = h("div", "blocked");
+    this.blockedEl.hidden = true;
+    const bp = h("section", "panel blocked-panel");
+    this.blockedText = h("p", "blocked-text");
+    this.blockedBtn = h("button", "btn primary");
+    this.blockedBtn.type = "button";
+    bp.append(this.blockedText, this.blockedBtn);
+    this.blockedEl.append(bp);
+
+    r.append(this.status, this.lobbyEl, this.resultsEl, this.badge, this.blockedEl);
+  }
+
+  showBlocked(text, label, onClick) {
+    this.blockedText.textContent = text;
+    this.blockedBtn.textContent = label;
+    this.blockedBtn.onclick = onClick;
+    this.status.hidden = true;
+    this.blockedEl.hidden = false;
+    this.blockedBtn.focus();
+  }
+
+  hideBlocked() {
+    this.blockedEl.hidden = true;
   }
 
   setStatus(text) {
@@ -218,8 +241,8 @@ export class UI {
     const ctx = cv.getContext("2d");
     ctx.clearRect(0, 0, 96, 96);
     ctx.save();
-    ctx.translate(48, 86);
-    ctx.scale(1.05, 1.05);
+    ctx.translate(48, 90);
+    ctx.scale(0.8, 0.8);
     drawFighter(ctx, { action: "idle", frame: 0, vy: 0, shield: 100, slot, fighter: id }, { ink: SLOT_COLOURS[slot], time: 0 });
     ctx.restore();
   }
