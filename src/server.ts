@@ -1,116 +1,94 @@
 import { createServer } from "node:http";
-import { readFile, readFileSync } from "node:fs";
-import { extname } from "node:path";
-import { addColophon, listColophons } from "./db.ts";
+import { readFile, readFileSync, readdirSync, statSync } from "node:fs";
+import { extname, join } from "node:path";
+import { recentMatches } from "./db.ts";
 import { sealToken } from "./cookies.ts";
-import { renderIndex, renderReadme, MAX_BODY_LENGTH } from "./render.ts";
+import { renderReadme, renderShell } from "./render.ts";
 import { renderMarkdown } from "./markdown.ts";
+import { attachWs } from "./net/socket.ts";
 
 const PORT = Number(process.env.PORT ?? 8080);
-const README = readFileSync("README.md", "utf8");
+const ROOT = join(import.meta.dirname, "..");
+const README = readFileSync(join(ROOT, "README.md"), "utf8");
 
 const MIME: Record<string, string> = {
-  ".avif": "image/avif",
+  ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
+  ".avif": "image/avif",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".woff2": "font/woff2",
   ".ico": "image/x-icon",
 };
 
-// A URL-encoded 320-character colophon body never comes close to this — it's
-// a hard ceiling against a request that skips the form's own maxlength, not a
-// tuned limit. Checked as bytes arrive, not after the fact: buffering an
-// unbounded body into memory first (whatever a crafted Content-Length or a
-// chunked request without one claims) is itself the vulnerability on a
-// single-machine deploy with a tight memory ceiling.
-const MAX_REQUEST_BODY_BYTES = 16 * 1024;
-
-// Once the cap is crossed, later chunks are read and discarded rather than
-// accumulated — costs no memory, since each one is immediately eligible for
-// GC — but the stream is still let run to its natural end before responding.
-// Destroying the connection early, tried first, raced a still-writing client
-// into a raw connection error instead of a clean 413: a declared
-// Content-Length is a promise the client already committed to keeping, and
-// only reading it out fully guarantees the client's own write has finished
-// before it goes to read our response. A stalled or genuinely enormous body
-// is bounded by Node's own default request timeout, not by this function.
-async function readBody(req: import("node:http").IncomingMessage): Promise<string | undefined> {
-  const declared = Number(req.headers["content-length"]);
-  let tooLarge = Number.isFinite(declared) && declared > MAX_REQUEST_BODY_BYTES;
-
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const chunk of req) {
-    const buf = chunk as Buffer;
-    total += buf.length;
-    if (total > MAX_REQUEST_BODY_BYTES) tooLarge = true;
-    if (!tooLarge) chunks.push(buf);
+// Listed once at startup: a request is served only if its exact path is a key
+// here. No filesystem path is ever built from a URL.
+function listPublic(): Map<string, { file: string; type: string }> {
+  const dir = join(ROOT, "public");
+  const out = new Map<string, { file: string; type: string }>();
+  for (const rel of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
+    const file = join(dir, rel);
+    const type = MIME[extname(rel).toLowerCase()];
+    if (type && statSync(file).isFile()) out.set(`/public/${rel.split("\\").join("/")}`, { file, type });
   }
-  return tooLarge ? undefined : Buffer.concat(chunks).toString("utf8");
+  return out;
 }
+const STATIC = listPublic();
 
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url ?? "/", "http://internal");
-  const { token, setCookie } = sealToken(req.headers.cookie);
-  if (setCookie) res.setHeader("Set-Cookie", setCookie);
+const ROOM_PATH = /^\/r\/([A-Za-z]{4})\/?$/;
 
-  if (req.method === "GET" && url.pathname === "/") {
-    const error = url.searchParams.get("error");
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(renderIndex(listColophons(), token, error ?? undefined));
-    return;
-  }
+const server = createServer((req, res) => {
+  try {
+    const url = new URL(req.url ?? "/", "http://internal");
+    const { setCookie } = sealToken(req.headers.cookie);
+    if (setCookie) res.setHeader("Set-Cookie", setCookie);
 
-  if (req.method === "POST" && url.pathname === "/colophons") {
-    const raw = await readBody(req);
-    if (raw === undefined) {
-      res.writeHead(413, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("payload too large");
-      return;
-    }
-    const params = new URLSearchParams(raw);
-    const body = (params.get("body") ?? "").trim();
-
-    let error: string | undefined;
-    if (body.length === 0) error = "empty";
-    else if (body.length > MAX_BODY_LENGTH) error = "long";
-
-    if (!error) addColophon(token, body);
-
-    res.writeHead(303, { Location: error ? `/?error=${error}` : "/" });
-    res.end();
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/readme/") {
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(renderReadme(renderMarkdown(README)));
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname.startsWith("/public/")) {
-    const ext = extname(url.pathname);
-    const type = MIME[ext];
-    if (!type) {
-      res.writeHead(404);
-      res.end("not found");
-      return;
-    }
-    readFile(`.${url.pathname}`, (err, data) => {
-      if (err) {
-        res.writeHead(404);
-        res.end("not found");
+    if (req.method === "GET" || req.method === "HEAD") {
+      const room = ROOM_PATH.exec(url.pathname)?.[1];
+      if (url.pathname === "/" || room) {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+        res.end(renderShell(recentMatches(10), room?.toUpperCase()));
         return;
       }
-      res.writeHead(200, { "Content-Type": type });
-      res.end(data);
-    });
-    return;
+      if (url.pathname === "/readme/") {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(renderReadme(renderMarkdown(README)));
+        return;
+      }
+      const asset = STATIC.get(url.pathname);
+      if (asset) {
+        readFile(asset.file, (err, data) => {
+          if (err) {
+            res.writeHead(404);
+            res.end("not found");
+            return;
+          }
+          res.writeHead(200, { "Content-Type": asset.type, "Cache-Control": "no-cache" });
+          res.end(data);
+        });
+        return;
+      }
+    }
+    res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("not found");
+  } catch (err) {
+    console.error("request failed", err);
+    if (!res.headersSent) res.writeHead(500);
+    res.end();
   }
-
-  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-  res.end("not found");
 });
 
+const net = attachWs(server);
+
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`colophon listening on 0.0.0.0:${PORT}`);
+  console.log(`mòdòu listening on 0.0.0.0:${PORT}`);
+});
+
+process.on("SIGTERM", () => {
+  net.close();
+  server.close(() => process.exit(0));
+  server.closeAllConnections();
+  setTimeout(() => process.exit(0), 3000).unref();
 });
