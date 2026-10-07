@@ -857,3 +857,31 @@ describe("dropping mid-launch", () => {
     expect(has(s, "ko")).toBe(false);
   });
 });
+
+describe("coming back after a fall", () => {
+  it("a drop mid-launch returns on the next stock with 0 damage", () => {
+    let s = fight();
+    s = edit(s, 0, { x: 0, facing: 1 });
+    s = edit(s, 1, { x: 30, facing: -1 });
+    s = step(s, [IN(BTN.ATTACK, 100), NO_INPUT]);
+    for (let i = 0; i < 14 && !has(s, "hit"); i++) s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 1).damage).toBeGreaterThan(0);
+    expect(f(s, 1).hitstun).toBeGreaterThan(0);
+    s = step(s, [NO_INPUT, null]);
+    s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(has(s, "back")).toBe(true);
+    expect(f(s, 1).stocks).toBe(2);
+    expect(f(s, 1).damage).toBe(0);
+  });
+  it("a drop during the post-KO respawn delay returns with 0 damage", () => {
+    let s = fight();
+    s = edit(s, 1, { x: 0, y: STAGE.blast.bottom + 100, damage: 77 });
+    s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 1).action).toBe("dead");
+    s = step(s, [NO_INPUT, null]);
+    s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(has(s, "back")).toBe(true);
+    expect(f(s, 1).stocks).toBe(2);
+    expect(f(s, 1).damage).toBe(0);
+  });
+});

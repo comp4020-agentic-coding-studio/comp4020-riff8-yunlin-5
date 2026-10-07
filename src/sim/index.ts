@@ -101,6 +101,7 @@ function endMove(f: FighterState): void {
 }
 
 function respawnFighter(f: FighterState, st: MatchState, event: "respawn" | "back"): void {
+  const wasDead = f.action === "dead"; // a fall already cost the stock; the new one starts clean
   f.x = STAGES[st.stage].respawn.x;
   f.y = STAGES[st.stage].respawn.y;
   f.vx = 0;
@@ -118,7 +119,7 @@ function respawnFighter(f: FighterState, st: MatchState, event: "respawn" | "bac
   f.shield = 100;
   f.respawnIn = 0;
   f.inked = 0;
-  if (event === "respawn") f.damage = 0;
+  if (event === "respawn" || wasDead) f.damage = 0;
   if (event === "respawn") st.events.push({ type: "respawn", slot: f.slot, x: f.x, y: f.y });
   else st.events.push({ type: "back", slot: f.slot });
 }
