@@ -355,7 +355,7 @@ export class Renderer {
     const pulse = 0.85 + 0.15 * Math.sin(now / 120);
     const g = ctx.createRadialGradient(0, -36, 6, 0, -36, 54 * pulse);
     g.addColorStop(0, "rgba(31,27,22,0.0)");
-    g.addColorStop(0.55, "rgba(31,27,22,0.22)");
+    g.addColorStop(0.55, "rgba(31,27,22,0.32)");
     g.addColorStop(1, "rgba(31,27,22,0)");
     ctx.fillStyle = g;
     ctx.beginPath();
