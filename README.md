@@ -107,4 +107,4 @@ by stocks then damage. Hiding the tab mid-match counts as a drop, and
 dropping while being launched costs the stock at once. The alternatives I weighed were
 pausing everyone, handing the fighter to the computer and forfeiting at
 once; the case for each, and what this costs, is in
-[the decision record](docs/decisions/0001-grace-then-forfeit-on-drop.md).
+[the decision record](https://github.com/comp4020-agentic-coding-studio/comp4020-riff8-yunlin-5/blob/main/docs/decisions/0001-grace-then-forfeit-on-drop.md).
