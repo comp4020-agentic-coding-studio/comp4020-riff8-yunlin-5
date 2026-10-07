@@ -17,6 +17,7 @@ export class Net {
     this.pingId = 0;
     this.seqs = [0, 0];
     this.closedForGood = false;
+    this.suspended = false;
     this.retry = 0;
     this.mySlot = null; // set by game.js: which fighter is ours
     this.lead = !/[?&]lead=0\b/.test(location.search);
@@ -25,6 +26,7 @@ export class Net {
   }
 
   connect() {
+    if (this.suspended) return; // a retry timer firing while the tab is hidden
     const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
     const ws = new WebSocket(url);
     this.ws = ws;
@@ -38,6 +40,7 @@ export class Net {
       this.on.open?.();
     };
     ws.onmessage = (e) => {
+      if (ws !== this.ws) return; // a socket we already left behind
       let m;
       try {
         m = JSON.parse(e.data);
@@ -54,8 +57,8 @@ export class Net {
         this.closedForGood = true;
         this.on.error?.({ code: "replaced" });
       }
-      this.on.close?.(this.closedForGood);
-      if (!this.closedForGood) {
+      this.on.close?.(this.closedForGood || this.suspended);
+      if (!this.closedForGood && !this.suspended) {
         this.retry++;
         setTimeout(() => this.connect(), Math.min(5000, 800 * this.retry));
       }
@@ -72,6 +75,25 @@ export class Net {
       this.ws?.close();
     } catch {}
     this.connect();
+  }
+
+  // A hidden tab can't play: close the socket so the server's drop grace (ADR 0001)
+  // starts now, and rejoin as the same seal when the tab is visible again.
+  suspend() {
+    if (this.suspended || this.closedForGood) return;
+    this.suspended = true;
+    try {
+      this.ws?.close(1000, "hidden");
+    } catch {}
+  }
+
+  resume() {
+    if (!this.suspended) return;
+    this.suspended = false;
+    if (!this.closedForGood) {
+      this.on.resume?.();
+      this.reconnect();
+    }
   }
 
   send(obj) {
