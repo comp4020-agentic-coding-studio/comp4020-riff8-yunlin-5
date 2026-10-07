@@ -443,6 +443,29 @@ noscript a {
   touch-action: none;
   pointer-events: auto;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.tbtn::after {
+  content: attr(data-cap);
+  font: 600 10px/1 system-ui, sans-serif;
+  letter-spacing: 0.03em;
+  opacity: 0.8;
+}
+
+.stick-hint {
+  position: absolute;
+  left: 22%;
+  bottom: 26%;
+  font: italic 16px/1 var(--serif, Georgia, serif);
+  color: var(--ink-soft, #6b665c);
+  opacity: 0.55;
+  pointer-events: none;
+  letter-spacing: 0.1em;
 }
 
 .tbtn.held {
@@ -479,6 +502,7 @@ noscript a {
   .tbtn {
     width: 58px;
     height: 58px;
+    font-size: 24px;
   }
 
   .tbtn-attack {

@@ -75,6 +75,7 @@ export class Input {
       b.type = "button";
       b.textContent = label;
       b.setAttribute("aria-label", name);
+      b.dataset.cap = name === "special" ? "ink" : name;
       const set = this.btnPointers[name];
       b.addEventListener("pointerdown", (e) => {
         e.preventDefault();
@@ -99,8 +100,12 @@ export class Input {
       attack: mk("attack", "擊"),
       jump: mk("jump", "躍"),
     };
+    const hint = el("div", "stick-hint");
+    hint.textContent = "move";
+    zone.append(hint);
     root.append(zone, this.base_el, pad);
     zone.addEventListener("pointerdown", (e) => {
+      hint.remove();
       if (this.stickId !== null) return;
       e.preventDefault();
       capture(zone, e);
