@@ -682,3 +682,20 @@ noscript a {
     margin-top: 4px;
   }
 }
+
+.pickfor {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.btn.small {
+  min-height: 28px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+}
+
+.btn.small.on {
+  background: var(--ink);
+  color: var(--paper);
+}

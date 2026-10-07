@@ -32,6 +32,8 @@ export class UI {
     this.welcome = null;
     this.lobby = null;
     this.phase = "lobby";
+    this.pickFor = 0; // 0 = picking for you, 1 = for the guest
+    this.hasKeyboard = !isTouch || matchMedia("(any-pointer: fine)").matches; // hidden on touch-only devices
     this.mode = "none"; // lobby | match | results | none
     this.build();
   }
@@ -60,6 +62,18 @@ export class UI {
     this.playersEl = h("ul", "players");
     p.append(this.playersEl);
 
+    this.pickForRow = h("div", "pickfor");
+    this.pickForRow.hidden = true;
+    this.pickForBtns = [h("button", "btn small", "Picking for: you"), h("button", "btn small", "Picking for: guest")];
+    this.pickForBtns.forEach((b, i) => {
+      b.type = "button";
+      b.onclick = () => {
+        this.pickFor = i;
+        if (this.lobby) this.drawLobby(this.lobby, this.welcome?.slot == null);
+      };
+      this.pickForRow.append(b);
+    });
+    p.append(this.pickForRow);
     this.pickEl = h("div", "picks");
     this.cards = {};
     for (const id of IDS) {
@@ -71,7 +85,7 @@ export class UI {
       const nm = h("span", "card-name");
       const bl = h("span", "card-blurb");
       card.append(cv, nm, bl);
-      card.onclick = () => this.on.pick(id);
+      card.onclick = () => (this.pickFor === 1 ? this.on.pick1(id) : this.on.pick(id));
       this.cards[id] = { card, cv, nm, bl };
       this.pickEl.append(card);
     }
@@ -92,7 +106,10 @@ export class UI {
     this.remCpu = h("button", "btn", "Remove CPU");
     this.remCpu.type = "button";
     this.remCpu.onclick = () => this.on.cpu(false);
-    row.append(this.readyBtn, this.addCpu, this.remCpu);
+    this.guestBtn = h("button", "btn", "Add a second player here");
+    this.guestBtn.type = "button";
+    this.guestBtn.onclick = () => this.on.guest(!this.guest());
+    row.append(this.readyBtn, this.addCpu, this.remCpu, this.guestBtn);
     p.append(row);
     this.noteEl = h("p", "note");
     p.append(this.noteEl);
@@ -164,6 +181,10 @@ export class UI {
     const s = this.welcome?.slot;
     return s == null ? null : this.lobby?.players?.find((p) => p.slot === s) || null;
   }
+  guest() {
+    const g = this.lobby?.youGuest;
+    return g == null ? null : this.lobby.players.find((p) => p.slot === g) || null;
+  }
   myReady() {
     return !!this.me()?.ready;
   }
@@ -216,18 +237,29 @@ export class UI {
         const t = h("span", "ptag " + (p.ready ? "ok" : ""), tag);
         li.append(t);
         if (p.slot === this.welcome.slot) li.append(h("span", "you", "you"));
+        else if (p.slot === l.youGuest) li.append(h("span", "you", "you (2)"));
+        else if (p.guest) li.append(h("span", "you", "guest"));
       } else {
         li.append(h("span", "seal ghost", "·"), h("span", "pname", "open"));
       }
       this.playersEl.append(li);
     }
-    const mine = me?.fighter;
+    const gp = this.guest();
+    if (!gp) this.pickFor = 0;
+    this.pickForRow.hidden = !gp;
+    this.pickForBtns.forEach((b, i) => b.classList.toggle("on", i === this.pickFor));
+    const target = this.pickFor === 1 && gp ? gp : me;
+    const mine = target?.fighter;
     for (const id of IDS) {
       const c = this.cards[id];
       c.card.classList.toggle("on", id === mine);
       c.card.disabled = spectator;
-      this.paintCard(c.cv, id, me ? me.slot : 0);
+      this.paintCard(c.cv, id, target ? target.slot : 0);
     }
+    // a second keyboard player: only where there is a keyboard and a seat to give
+    this.guestBtn.hidden = spectator || !this.hasKeyboard || (!gp && l.players.length >= 4);
+    this.guestBtn.textContent = gp ? "Remove second player" : "Add a second player here";
+    this.helpEl.textContent = this.helpText(!!gp);
     this.drawStages(l, spectator);
     this.readyBtn.disabled = spectator;
     this.readyBtn.textContent = me?.ready ? "Not ready" : "Ready";
@@ -306,6 +338,13 @@ export class UI {
       ctx.lineTo(X(b), Y(y));
       ctx.stroke();
     }
+  }
+
+  helpText(guest) {
+    if (this.isTouch) return "Left thumb: move. Right thumb: jump, attack, ink, shield.";
+    if (guest)
+      return "Player 1: A D move, W or Space jump, S drops, J attack, K ink, L shield. Player 2: arrows move, Up jumps, comma attack, full stop ink, slash or right Shift shield. Gamepads: the first pad is player 1, the second is player 2.";
+    return "Move A D or arrows. Jump W, Up or Space. Attack J. Ink K. Shield L. Down drops through a stroke. A gamepad works too: stick or d-pad, A jump, X attack, B ink, bumpers shield.";
   }
 
   paintCard(cv, id, slot) {
