@@ -79,10 +79,12 @@ simulation; your own fighter is simply drawn from the newest snapshot.
 deterministic, a drop followed by a return inside 15 seconds gets the fighter
 back, 900 ticks of silence ends in forfeit, bad or oversized WebSocket
 messages are rejected without taking the server down, the home page
-explains itself without JavaScript, the stages' geometry holds, held buttons
-are not lost between input samples, and a second socket with the same seal
-takes the seat over (`spec/stage.test.ts`, `spec/input-latch.test.ts`,
-`spec/seat-takeover.test.ts`). The colour rule in `CLAUDE.md` (a slot's ink identifies a player, vermilion asks for action or attention, links are blue, nothing else is coloured) is kept by reading, not by a test.
+explains itself without JavaScript, picking a stage in the lobby changes
+where the fighters stand, a tap shorter than one tick of the simulation
+still lands, and a second socket with the same seal takes the seat over (`spec/stage.test.ts`, `spec/input-latch.test.ts`,
+`spec/seat-takeover.test.ts`). The colour rule in `CLAUDE.md` (a slot's ink
+identifies a player, vermilion asks for action or attention, links are blue,
+nothing else is coloured) is kept by reading, not by a test.
 Whether the game is fun, whether the fighters feel different from one another
 and whether 15 seconds is the right grace on a phone in a real room are for
 people to judge by playing.
