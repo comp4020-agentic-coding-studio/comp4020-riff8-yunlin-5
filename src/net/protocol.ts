@@ -1,13 +1,14 @@
 // Wire protocol for /ws (contract §5). Everything a client sends is parsed
 // here and nowhere else: anything that isn't exactly a known message is null.
-import type { FighterId, Input, MatchState, SimEvent, Slot } from "../sim/index.ts";
-import { FIGHTER_IDS, GRACE_TICKS } from "../sim/index.ts";
+import type { FighterId, Input, MatchState, SimEvent, Slot, StageId } from "../sim/index.ts";
+import { FIGHTER_IDS, GRACE_TICKS, STAGES } from "../sim/index.ts";
 
 export type ClientMsg =
   | { t: "join"; room?: string }
   | { t: "pick"; fighter: FighterId }
   | { t: "ready"; ready: boolean }
   | { t: "cpu"; add: boolean }
+  | { t: "stage"; id: StageId }
   | { t: "input"; seq: number; b: number; x: number; y: number }
   | { t: "ping"; id: number };
 
@@ -39,6 +40,8 @@ export function parseClientMessage(raw: string): ClientMsg | null {
       return typeof v.ready === "boolean" ? { t: "ready", ready: v.ready } : null;
     case "cpu":
       return typeof v.add === "boolean" ? { t: "cpu", add: v.add } : null;
+    case "stage":
+      return typeof v.id === "string" && Object.hasOwn(STAGES, v.id) ? { t: "stage", id: v.id as StageId } : null;
     case "input":
       return intIn(v.seq, 0, MAX_INT - 1) && intIn(v.b, 0, 15) && intIn(v.x, -100, 100) && intIn(v.y, -100, 100)
         ? { t: "input", seq: v.seq, b: v.b, x: v.x, y: v.y }
