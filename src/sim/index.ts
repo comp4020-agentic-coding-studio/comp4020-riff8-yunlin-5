@@ -129,6 +129,9 @@ function updateAbsence(st: MatchState, inputs: (Input | null | undefined)[], pre
     const input = inputs[f.slot];
     if (input === null) {
       if (f.absentSince === null) {
+        // Dropping mid-launch can't dodge the KO: it costs the stock at once.
+        if (f.hitstun > 0) loseStock(st, f);
+        if (f.stocks <= 0) continue; // that was the last one: out, no grace
         f.absentSince = prevTick;
         f.vx = 0;
         f.inked = 0;
@@ -531,20 +534,25 @@ function checkKOs(st: MatchState): void {
     if (!onField(f)) continue;
     const cy = f.y - FIGHTERS[f.fighter].height / 2;
     if (f.x >= B.left && f.x <= B.right && cy >= B.top && cy <= B.bottom) continue;
-    const by = f.lastHitBy !== null && st.tick - f.lastHitTick <= KO_CREDIT_TICKS ? f.lastHitBy : null;
-    f.stocks--;
-    f.falls++;
-    f.action = "dead";
-    f.actionFrame = 0;
-    f.respawnIn = RESPAWN_DELAY;
-    f.vx = f.vy = 0;
-    f.hitstun = f.hitstop = 0;
-    f.hitThisMove = 0;
-    f.inked = 0;
-    f.lastHitBy = null;
-    st.events.push({ type: "ko", slot: f.slot, x: f.x, y: f.y, by });
-    if (by !== null) st.fighters[by]!.kos++;
+    loseStock(st, f);
   }
+}
+
+/** A fall: stock, credit and a `ko` event. Used by blast-zone KOs and by dropping mid-launch. */
+function loseStock(st: MatchState, f: FighterState): void {
+  const by = f.lastHitBy !== null && st.tick - f.lastHitTick <= KO_CREDIT_TICKS ? f.lastHitBy : null;
+  f.stocks--;
+  f.falls++;
+  f.action = "dead";
+  f.actionFrame = 0;
+  f.respawnIn = RESPAWN_DELAY;
+  f.vx = f.vy = 0;
+  f.hitstun = f.hitstop = 0;
+  f.hitThisMove = 0;
+  f.inked = 0;
+  f.lastHitBy = null;
+  st.events.push({ type: "ko", slot: f.slot, x: f.x, y: f.y, by });
+  if (by !== null) st.fighters[by]!.kos++;
 }
 
 const PUSH_MAX = 1.5;
