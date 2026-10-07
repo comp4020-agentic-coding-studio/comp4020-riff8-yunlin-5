@@ -1,11 +1,10 @@
-# Crit 9: make Colophon real-time, as a team
+# Crit 9: turn this repo into a real-time platform fighter, as a team, in four hours
 
-Written by pod 5 of yunlin's crit, 7 October 2026, for one unattended run.
+Written by pod 5 of yunlin's crit on 7 October 2026, for one unattended run.
 
-Nobody will read your questions or answer them. This file is the whole
-brief. Run it start to finish in one go. Don't stop until every item in
-§9 (Definition of done) is true. The riff block at the top of `CLAUDE.md`
-still governs:
+Nobody will read your questions or answer them, so this file is the whole
+brief. Run it start to finish in one go and work the full four hours (§1).
+The riff block at the top of `CLAUDE.md` still governs:
 
 - keep `main` deployable
 - leave that block exactly as it is
@@ -13,44 +12,77 @@ still governs:
 
 ## 0. Ground rules for an unattended run
 
-- **No one is there.** Never ask a question or end your turn waiting for a
-  reply. When you would ask, escalate (§5), act on the ruling and keep going.
-- **Never end your turn while work is in flight.** If a worker is still
-  running or anything in §9 is unmet, keep working. Review what has come
-  back, prepare the next merge, or poll the status files (§4). The run ends
-  only when §9 is all true.
-- **Never write to the live app.** A colophon can't be edited or deleted,
-  so anything you post to `https://comp4020-riff8-yunlin-5.fly.dev` stays
-  there forever. All write tests run against local or CI containers.
-- **The product rules still hold.** The harness below the rule in
-  `CLAUDE.md` still governs the code:
-  - every body goes through `escapeHtml`
-  - no-JS keeps working
-  - `--seal` has one meaning
-  - no accounts, no notifications
-  - reject, don't truncate
+- **No one is there.** Never ask a question, and never end your turn
+  waiting for a reply. Where you would ask, escalate (§5), act on the
+  ruling and keep going.
+- **Never end your turn while work is in flight.** If a worker is running,
+  a milestone is unshipped, or the clock (§1) hasn't run out, keep working.
+  Review what has come back, prepare the next merge, or poll the status
+  files (§4).
+- **Original work only. This is a hard rule with no exceptions.** The game
+  is a platform fighter in the tradition of Smash-style party fighters.
+  Game mechanics are fair to borrow; nothing else is. This repo is public
+  and deployed under a university's GitHub org. Never use:
+  - Nintendo's or anyone else's characters, names, logos, sprites, sounds,
+    music or stage likenesses
+  - the words "Smash", "Super Smash Bros", "Mario" or "Nintendo", anywhere
+    in code, copy, commit messages or the README
+  - anything fetched from the web as an asset
 
-  The riff block only lifts the grading obligations.
+  Draw every fighter and stage in code (Canvas 2D paths), and synthesise
+  every sound with WebAudio.
+- **`main` is always deployable and always playable.** Every milestone
+  ships through CI to the live app before the next one starts (§6). If the
+  run is cut off at any moment, what's live must be a game someone can play.
+- **Keep `spec/invariants.test.ts` green.** `/` answers 200, and `/readme/`
+  publishes `README.md` with its headings in order. The riff block lets you
+  change or delete the agent's own spec tests for the old app (Colophon).
+  Delete those that test Colophon behaviour, and adapt those that still
+  guard the server boundary (§7, T6).
 - **Don't touch `comp4020-final-yunlin`.** It's the original repo.
 
-## 1. The goal
+## 1. The goal, and the clock
 
-The brief is at <https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/09-all-at-once/>.
-Fetch it in Phase 0. In short:
+**The goal: a real-time, online, up-to-four-player platform fighter.**
+Each person plays on their own device, desktop or phone, in the same room
+on the live URL. It's an answer to the crit 9 brief
+(<https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/crits/09-all-at-once/>):
 
-1. **Real-time.** A colophon one person writes appears in every other open
-   session within about a second, with no reload.
-2. **One decision.** Make one multi-user behaviour decision and judge it
-   against what `README.md` says good means. Record it in the repo with the
-   alternatives you weighed and what the choice costs. Use an architecture
-   decision record (ADR).
+- what one player does shows up for everyone else within well under a
+  second, with no reload
+- one multi-user behaviour decision is made, argued and recorded as an ADR
+  (§7, T1)
 
-**Out of scope:**
-- `PROCESS.md` and `reflections/` (this run isn't marked). Leave them as
-  they are, since `pnpm check:evidence` already passes on them.
-- Accounts, profiles, likes, replies, threads or notifications.
-- Rewriting the app, or swapping the stack. It's ~400 lines of plain Node,
-  `node:sqlite` and server-rendered HTML, and that is part of the argument.
+At the crit the pod will open the live URL on their phones at the same
+time and fight, and argue for the option your decision didn't pick.
+
+**The pod's defaults.** These are fixed unless §5 escalation finds one
+impossible:
+
+- **Title:** the team picks one in Phase 1. It must be original, and must
+  not echo any existing game's name.
+- **Theme:** ink-brush fighters on a painted handscroll. This keeps the
+  repo's world: the stage is drawn in the spirit of `public/scroll.avif`'s
+  painting, fighters are brush-stroke figures, and hits splash ink. Each
+  player is tagged by their **seal glyph** from `src/seal.ts`, given by
+  the existing anonymous `seal` cookie (`src/cookies.ts`). There are no
+  accounts, no names and no chat. That's presence without identity, kept
+  from Colophon.
+
+**The clock.**
+1. As your first action, run `date` and write the start time to
+   `.claude/team/board.md`.
+2. The deadline is **start + 4 hours**.
+3. At every phase gate, run `date` again and write the time remaining on
+   the board.
+4. If you're behind, cut from the bottom of §7's priority list, never from
+   the top.
+5. If every must-have and should-have is done with time left, keep going
+   down the stretch list until **start + 3h40**.
+6. From then on, only close out (Phase 6).
+
+Your token budget may end the run sooner than the clock. That's why every
+milestone ships.
 
 ## 2. The team
 
@@ -58,19 +90,21 @@ You are the **project lead**. You get every task in §7 and hand out all
 the implementation. You plan, write the shared contract, merge, judge and
 ship, and you are the only one who commits to `main`. If you are not
 running on **Claude Opus 5.5**, keep the lead role anyway, but send every
-decision listed in §5 to `opus-consultant` before you act on it.
+decision that §5 lists to `opus-consultant` before you act on it.
 
-| Agent | Model | Effort | Owns (writes only these) | Phase |
+| Agent | Model | Effort | Owns (writes only these) | Milestones |
 |---|---|---|---|---|
-| lead (you) | Opus 5.5 | high, and think hard at every phase gate | `main`, merges, `.claude/team/*`, `memory/now.md`, removing `prompt.md` | all |
-| `opus-consultant` | Opus 5.5 (`claude-opus-5-5`) | xhigh | nothing (gives rulings) | 1, then on call |
-| `backend-dev` | Sonnet 5.5 (`claude-sonnet-5-5`) | high | `src/**` | 3 |
-| `frontend-dev` | Sonnet 5.5 | medium | `public/**` | 3 |
-| `test-engineer` | Sonnet 5.5 | high | `spec/realtime.test.ts`, plus any new `spec/*.test.ts` | 3 |
-| `docs-writer` | Sonnet 5.5 | medium | `docs/**`, `README.md`, harness rules below the line in `CLAUDE.md` | 3 |
-| `reviewer` | Sonnet 5.5 | high | nothing (writes findings) | 5 |
-| `verifier` | Sonnet 5.5 | medium | nothing (writes findings) | 5 |
-| `opus-reviewer` | Opus 5.5 | xhigh | nothing (go / no-go) | 6 |
+| lead (you) | Opus 5.5 | high; think hard at every phase gate | `main`, merges, `package.json` and the lockfile, `Dockerfile`, `.claude/team/*`, `memory/now.md`, removing `prompt.md` | all |
+| `opus-consultant` | Opus 5.5 (`claude-opus-5-5`) | xhigh | nothing (gives rulings) | Phase 1, then on call |
+| `sim-dev` | Sonnet 5.5 (`claude-sonnet-5-5`) | high | `src/sim/**` except `src/sim/fighters/**` | M1–M4 |
+| `netcode-dev` | Sonnet 5.5 | high | `src/server.ts`, `src/net/**`, `src/db.ts`, `src/render.ts`, `src/html.ts`, `src/markdown.ts` | M1–M4 |
+| `client-dev` | Sonnet 5.5 | high | `public/**` except `public/art/**` | M1–M4 |
+| `fighter-designer` | Sonnet 5.5 | medium | `src/sim/fighters/**`, `public/art/**` | M2–M4 |
+| `test-engineer` | Sonnet 5.5 | high | `spec/**` except `spec/invariants.test.ts` and `spec/global-setup.ts` | M1–M4 |
+| `docs-writer` | Sonnet 5.5 | medium | `README.md`, `docs/**`, the harness rules below the line in `CLAUDE.md` | M3 |
+| `reviewer` | Sonnet 5.5 | high | nothing (writes findings) | every milestone |
+| `playtester` | Sonnet 5.5 | medium | nothing (writes findings) | every milestone |
+| `opus-reviewer` | Opus 5.5 | xhigh | nothing (go / no-go) | before M3 and the final ship |
 
 **How to spawn them:**
 1. In Phase 0, write the agent definitions in Appendix A to
@@ -78,66 +112,72 @@ decision listed in §5 to `opus-consultant` before you act on it.
    the files set each role's model and effort.
 2. If those types then appear among the subagent types you can spawn, use
    them.
-3. If they don't appear (definitions may not load mid-session), spawn
-   `general-purpose` with `model: "sonnet"` or `model: "opus"`. Paste the
-   role's definition body and its effort line at the top of the task card.
+3. If they don't, spawn `general-purpose` with `model: "sonnet"` or
+   `model: "opus"`. Paste the role's definition body and its effort line
+   at the top of the task card.
 
 **Limits:**
-- At most four workers run at once.
+- At most **four builders** run at once.
 - Workers can't spawn agents. Only you do.
 - If the Agent tool isn't available at all, don't stall. Do every role
-  yourself, in the same worktrees and the same order, and keep the same
-  escalation rules, with `opus-consultant` replaced by stopping to reason
-  it through in writing in `.claude/team/decisions.md`.
+  yourself, in the same worktrees and the same milestone order. Reason
+  escalations through in writing in `.claude/team/decisions.md`.
 
 ## 3. Worktree layout
 
 ```
-comp4020-riff8-yunlin-5/                 main checkout: lead only, integration branch lives here
+comp4020-riff8-yunlin-5/                 main checkout: lead only; integration happens here
 ├── .claude/                             gitignored: none of this is ever committed
 │   ├── agents/*.md                      Appendix A
 │   ├── team/
-│   │   ├── board.md                     task table: id, owner, agent id, branch, status, tip SHA
-│   │   ├── contract.md                  the shared technical contract (Phase 2)
+│   │   ├── board.md                     start time, deadline, task table (id, owner, agent id, branch, status, tip SHA)
+│   │   ├── contract.md                  the shared technical contract (Phase 2), the source of truth
 │   │   ├── decisions.md                 every ruling, by whom, and why
 │   │   ├── status/<role>.md             each worker's heartbeat (§4)
-│   │   └── findings/<role>.md           reviewer and verifier output
+│   │   └── findings/<role>.md           reviewer and playtester output
 │   └── worktrees/
-│       ├── backend/                     branch team/backend    port 8101
-│       ├── frontend/                    branch team/frontend   port 8102
-│       ├── tests/                       branch team/tests      port 8103
+│       ├── sim/                         branch team/sim        port 8101
+│       ├── net/                         branch team/net        port 8102
+│       ├── client/                      branch team/client     port 8103
+│       ├── fighters/                    branch team/fighters   port 8104
+│       ├── tests/                       branch team/tests      port 8105
 │       └── docs/                        branch team/docs       (no server)
 ```
 
-**Creating them**, from the main checkout after Phase 2, so every branch
-starts from the commit that carries this file:
+**Creating them.** Create each worktree when its first task starts, from
+the current tip of `main`, so later milestones build on shipped work:
 
 ```sh
-for r in backend frontend tests docs; do
-  git worktree add ".claude/worktrees/$r" -b "team/$r" HEAD
-  (cd ".claude/worktrees/$r" && pnpm install --frozen-lockfile)
-done
+git worktree add ".claude/worktrees/<r>" -b "team/<r>" main
+(cd ".claude/worktrees/<r>" && pnpm install --frozen-lockfile)
 ```
+
+For each later milestone, the worker brings its branch up to date first,
+with `git merge main` inside its worktree.
 
 If `pnpm` isn't on `PATH`, prefix every command with `mise exec --`.
 
-**Ports.** Each worker runs its own server so they never collide:
+**Ports.** Each worker runs its own server:
 
 ```sh
-DB_PATH=/tmp/colophon-<role>.db PORT=<port> node src/server.ts &
+DB_PATH=/tmp/fighter-<role>.db PORT=<port> node src/server.ts &
 APP_URL=http://127.0.0.1:<port> pnpm check
 ```
 
-Use `127.0.0.1`, never `localhost`. Something else may own `[::1]:8080`
-on this machine. The lead uses port 8100. The verifier's Docker container
-maps to port 8104.
+Use `127.0.0.1`, never `localhost`. Something else may own `[::1]:8080`.
+The lead uses port 8100. The playtester's Docker container maps to port
+8110.
 
 **Paths.** Gitignored files don't exist inside a worktree. Every path to
 `.claude/team/` that you give a worker must be absolute, pointing into the
 main checkout.
 
-**Branches.** They're all in one repository, so any worktree can
+**Branches.** All branches are in one repository, so any worktree can
 `git merge team/<other>` without pushing.
+
+**`vitest` and `tsc`.** Both are anchored to the repo root (`spec/**`,
+and `src` / `spec` / `scripts`), so the nested worktrees are never picked
+up. Keep it that way.
 
 ## 4. How the team communicates
 
@@ -148,15 +188,16 @@ There are four channels. The lead is the only writer of `board.md`,
    template:
 
    ```
-   ROLE: <role>. EFFORT: <level>. MODEL: <model>.
-   WORKTREE: <absolute path>. BRANCH: team/<role>. PORT: <port>.
-   GOAL: <one paragraph, from §7>
+   ROLE: <role>. EFFORT: <level>. MODEL: <model>. MILESTONE: <M#>.
+   WORKTREE: <absolute path>. BRANCH: team/<r>. PORT: <port>.
+   GOAL: <one paragraph from §7>
    YOU OWN: <paths>. Touch nothing else; to change anything outside, escalate.
    CONTRACT: <paste the sections of contract.md you need>; full text at <absolute path>.
-   ACCEPTANCE: <checklist from §7: each item is something you can run or read>
+   ACCEPTANCE: <checklist: each item something you can run or read>
+   TIMEBOX: <minutes>. If you'll overrun, report what's done and what's left.
    STATUS FILE: <absolute path to .claude/team/status/<role>.md>
    ESCALATION: §5 of <absolute path to prompt.md>.
-   REPORT: end your turn with the report format below; never end it any other way.
+   REPORT: end your turn with the report format below, never any other way.
    ```
 
 2. **Status file (worker to lead, throughout).** The worker overwrites
@@ -178,16 +219,17 @@ There are four channels. The lead is the only writer of `board.md`,
    - the branch and tip SHA
    - what changed, file by file, in one line each
    - the exact checks run, with their last lines of output
-   - anything the lead should know before merging
+   - what's left, if the timebox ran out
 
 4. **Resume (lead to worker).** Use `SendMessage`, addressed to the agent
-   id recorded on the board. It carries a ruling, a fix request or
-   findings. The worker keeps its context. Always resume the same worker
-   rather than starting a new one for the same files.
+   id recorded on the board. It carries a ruling, a fix request, findings
+   or the next milestone's card. The worker keeps its context. Resume the
+   same worker for the same files across milestones rather than starting
+   a new one.
 
 **Commits.** Workers commit small and often on their own branch. Messages
-are prefixed with the role, for example `backend: broadcast after a
-successful insert`. The lead merges with `--no-ff`, so the history shows
+are prefixed with the role: `sim: `, `net: `, `client: `, `fighters: `,
+`spec: ` or `docs: `. The lead merges with `--no-ff`, so the history shows
 the team.
 
 ## 5. Escalation: when anyone is stuck
@@ -196,346 +238,422 @@ the team.
 - the same check still fails after two honest fix attempts
 - the contract or the task card doesn't settle a choice, and more than one
   answer is plausible
-- the change would break a harness rule, an existing spec test, or
-  something `README.md` promises
+- the change would break a harness rule, `spec/invariants.test.ts`, or the
+  original-work rule (§0)
 - they need to edit a file they don't own
-- anything would touch the live app
+- the timebox is about to run out on a must-have
 
 **The worker's procedure:**
 1. Set the status file to `BLOCKED`, with the question, the options and
    their recommendation.
 2. End the turn with a `BLOCKED` report.
-3. Never guess past a harness rule.
 
 **The lead's procedure:**
-- If the answer follows plainly from §7, the contract or `README.md`,
-  answer it yourself.
+- If the answer follows plainly from §7, the contract or this file, answer
+  it yourself.
 - Otherwise, ask `opus-consultant`. Spawn it once in Phase 1, then resume
   it with `SendMessage` so its rulings stay consistent. Send it:
   - the question
   - the options
   - the file paths it needs
-  - the README passages at stake
+  - the deadline remaining
   - a request for a ruling of 10 lines or fewer: decision, reason, risk
 - Record the ruling in `decisions.md`, then resume the worker with it.
 
 **The lead also consults when:**
 - two workers' reports conflict
-- the integrated build fails and no single owner clearly owns the failure
+- an integrated build fails and no single owner clearly owns the failure
 - the reviewer and the author disagree
+- a milestone is going to miss its time
 - you've been stuck yourself for two attempts
 
 **It's bounded.** After two consultant rounds on one question, take the
-most conservative option. That's the one that keeps `main` green, keeps
-the harness rules intact and adds the least. Record it in `decisions.md`,
-and in the ADR's alternatives if it's relevant, then move on. Consultant
-rulings are binding unless one would break an item in §9.
+option that keeps `main` playable and green and costs the least time.
+Record it and move on. Consultant rulings are binding unless one would
+break an item in §9.
 
 ## 6. The plan
 
-**Phase 0: Orient and baseline (lead).**
+The times below are targets, measured from the start time on the board.
+
+**Phase 0: Orient and set up (lead, 0:00–0:20).**
 - Read:
-  - the riff block in `CLAUDE.md` and the harness rules below it
+  - the riff block in `CLAUDE.md`
   - `README.md`
   - everything in `src/` and `spec/`
-  - `memory/now.md`
-  - `fly.toml` and `.github/workflows/checks.yml`
+  - `fly.toml`, the `Dockerfile` and `.github/workflows/checks.yml`
 - Fetch the brief.
-- Start the app on port 8100 with a scratch DB. Confirm `pnpm check` is
-  green before any change.
-- Write the agent definitions and `board.md`, listing §7's tasks with
-  owners.
+- Confirm `pnpm check` is green on port 8100 before any change.
+- Add the one runtime dependency you need, `ws` (with `@types/ws` as a dev
+  dependency), and commit the lockfile, because CI installs with
+  `--frozen-lockfile`. Node 24 has a WebSocket client built in, so tests
+  can use it, but it has no WebSocket server.
+- Update the `Dockerfile` if new top-level folders need copying.
+- Write the agent definitions and `board.md`.
 
-**Phase 1: Decide (`opus-consultant`, xhigh).**
-- Pick the one multi-user decision (§7, T1).
-- Return a decision memo:
-  - the choice
+**Phase 1: Decide (`opus-consultant`, xhigh, 0:20–0:30). Run it alongside
+Phase 2.**
+- Pick the title (§1) and the one multi-user decision (§7, T1).
+- Return a short memo:
+  - the decision
   - at least two real alternatives, each with the strongest case for it
   - what the choice costs
-  - what it means for the implementation: what goes live, what waits, and
-    what someone sees when they come back
-  - whether `README.md` or a harness rule has to change first
-- Challenge the memo once if it's weak, then accept it into
-  `decisions.md`.
+  - what it means for the protocol and the sim
+- Challenge it once if it's weak. Accept it into `decisions.md`.
 
-**Phase 2: Contract (lead).**
-- Write `contract.md`: the technical contract in §7, T2, made concrete
-  with the decision's implications folded in. Every worker builds against
-  this file, so be exact about routes, payload shapes, IDs and file
-  ownership.
-- Create the worktrees (§3).
+**Phase 2: Contract (lead, by 0:30).**
+- Write `contract.md` from §7, T2: the architecture, the message protocol,
+  the sim's API and fighter data schema, file ownership and the
+  decision's implications.
+- Workers build against it. If it changes, you announce the change to
+  every affected worker with `SendMessage`.
+- Then cut the worktrees.
 
-**Phase 3: Build (four workers, in parallel, one message spawning all
-four).**
-- `backend-dev` takes T3.
-- `frontend-dev` takes T4.
-- `test-engineer` takes T5. Write the tests against the contract first.
-  Commit them showing red for the right reason against the untouched app.
-  Then, once `backend-dev` reports `DONE`, `git merge team/backend` in your
-  worktree and make sure they pass. Report flaky tests as failures.
-- `docs-writer` takes T6.
-- While they work: answer escalations, poll status, and read each branch's
-  diff as it lands.
+**Milestones.** Each one ends with the same gate:
+1. Integrate in the main checkout, on `team/integration` from `main`,
+   merging each team branch `--no-ff`.
+2. `pnpm check` on port 8100.
+3. `reviewer` and `playtester` run in parallel against the integration
+   branch.
+4. Fix the blocking findings: send them to their owners, re-merge and
+   recheck only what changed.
+5. Push `team/integration` and open a PR to `main`. Run
+   `gh pr checks --watch`, which builds and tests the real Docker image,
+   then `gh pr merge --merge`.
+6. Watch the `main` run through deploy (`gh run watch`).
+7. Do the live check (below).
+8. Note the time on the board.
 
-**Phase 4: Integrate (lead).**
-1. In the main checkout:
-   `git switch -c team/integration`
-2. Merge `team/backend`, `team/frontend`, `team/tests` and `team/docs`,
-   in that order, each with `--no-ff`.
-3. Resolve conflicts by ownership. If a conflict isn't clearly one owner's,
-   escalate.
-4. Typecheck, start the app on port 8100, and run `pnpm check`.
+If `gh` can't open PRs, run the playtester's Docker steps locally and push
+`main` directly. Never push red to `main`.
 
-**Phase 5: Review and verify (`reviewer` and `verifier`, in parallel).**
-- **`reviewer`** reads `git diff riff-start..team/integration`, checking
-  it against the contract, every harness rule and §7's acceptance lines.
-  In particular it checks:
-  - escaping on every path a body travels
-  - no seal token on the wire
-  - no `var(--seal)` drift
-  - no-JS still works
-  - no unbounded memory or connections
+**M1: A playable slice, live by 1:30.**
+- Builders: `sim-dev`, `netcode-dev`, `client-dev` and `test-engineer`.
+- The result: two people on two devices join the same room by link. Each
+  controls one placeholder fighter on one stage. They can run, jump,
+  double-jump and attack. Damage % rises on a hit, knockback grows with
+  damage, a fighter launched past the blast zone loses a stock, and the
+  last one standing wins. The match restarts from the results screen.
+  Keyboard and touch both work.
 
-  Findings go to `findings/reviewer.md`, each marked blocking or minor,
-  with file:line.
-- **`verifier`** checks out `team/integration` in a detached worktree. It
-  builds and runs the Docker image exactly as CI does (with `--tmpfs
-  /data`, on `-p 8104:8080`) and runs `APP_URL=http://127.0.0.1:8104 pnpm
-  check`. It also proves real-time by hand: two `curl -N` streams with
-  different seal cookies, then a POST from a third. It times arrival and
-  confirms both streams got it within a second, with the right "yours"
-  marking. If a headless browser is available, it repeats this with two
-  real pages. Results go to `findings/verifier.md`.
-- **Fix loop.** Send each blocking finding to its owner with `SendMessage`.
-  The owner fixes it on their branch. You re-merge, then the reviewer and
-  verifier recheck only what changed. Repeat until there are no blocking
-  findings. A finding still open after three rounds gets escalated, and
-  then descoped with a reason recorded in the ADR, never left red.
+**M2: It feels like a fighter, live by 2:30.**
+- `fighter-designer` joins as soon as the sim's fighter data schema is
+  fixed in the contract.
+- Four original fighters with distinct weight, speed and moves.
+- Specials, shield, fast-fall, pass-through platforms and ledge-safe
+  respawn.
+- Up to four players and spectators.
+- A lobby with fighter select and ready-up.
+- A HUD with damage %, stocks and seal glyphs.
+- Hitstop, screen shake and ink-splash particles.
 
-**Phase 6: Pre-ship review (`opus-reviewer`, xhigh, fresh context).**
-- It reads the whole integration diff, the ADR and `README.md`, and
-  answers:
-  - Does this ship?
-  - Is the decision argued from the README, or bolted on?
-  - What would a sceptical crit attack first?
-- Act on any "no", back through Phase 5. Minor notes are your call.
+**M3: A whole game, live by 3:15.**
+- `docs-writer` joins.
+- The CPU opponent, so one person can play alone.
+- The decision implemented, and the ADR written (T1).
+- Persisted match history.
+- The no-JS page.
+- The README and harness rewrite.
+- Synthesised sound.
+- `opus-reviewer` gives a go / no-go before this milestone ships.
 
-**Phase 7: Ship (lead).**
-1. Push `team/integration` and open a PR to `main` with `gh pr create`.
-   This is the one PR, the team's merge.
-2. `gh pr checks --watch`. CI builds the same Docker image and runs the
-   whole spec against it. That is the strongest proof you have.
-3. When the PR is green, `gh pr merge --merge`, then watch the `main` run
-   through deploy with `gh run watch`.
-4. If `gh` can't open a PR, run the CI-equivalent from Phase 5 locally,
-   merge into `main` and push. Never push red to `main`.
-5. **Live check, read-only.**
-   - `curl -s -o /dev/null -w '%{http_code}'` on `/` and on `/readme/`
-     must both return 200.
-   - `curl -sN -D - --max-time 5` on the live stream route must show
-     `content-type: text/event-stream` and a first frame.
-   - Post nothing.
+**M4: Stretch, until 3:40.** Work down §7's stretch list. Ship whatever
+is finished, through the same gate.
 
-**Phase 8: Hand off and close (lead).**
-1. Rewrite `memory/now.md` as a hand-off in the agent's existing style:
-   - what this run did
+**Phase 6: Close out (lead, from 3:40, or earlier if everything's done).**
+1. `opus-reviewer` does a final go / no-go on what's live.
+2. Rewrite `memory/now.md` as a hand-off in the agent's existing style:
+   - what this run built
    - the decision
    - where the ADR is
-   - what C10 should look at next
-2. Remove the worktrees with `git worktree remove`, delete the merged
-   `team/*` branches locally and on the remote, and stop any servers or
-   containers you started.
-3. Make the **last commit**: the `memory/now.md` update, plus
-   `git rm prompt.md`. Push it, watch that run go green through deploy,
-   and repeat the live check.
+   - what C10 should look at
+   - what's unfinished
+3. Remove the worktrees, delete the merged `team/*` branches locally and on
+   the remote, and stop every server and container you started.
+4. Make the **last commit**: the `memory/now.md` update, plus
+   `git rm prompt.md`. Push it, watch its run go green through deploy, and
+   repeat the live check.
+
+**The live check at every ship.**
+- `curl -s -o /dev/null -w '%{http_code}'` on
+  `https://comp4020-riff8-yunlin-5.fly.dev/` and on `/readme/` must both
+  return 200.
+- A WebSocket client must connect to the live game endpoint, receive the
+  welcome message and disconnect cleanly.
+- Matches leave no trace beyond match history, so the playtester may play a
+  short live match with two scripted clients. Delete nothing, and record
+  that it was a test.
 
 ## 7. Tasks
 
 **Pod's choice for the decision:** none. The consultant decides in Phase 1.
 
-**T1. The decision (`opus-consultant`).** Choose one, judged against
-`README.md`'s argument: one unhurried object that strangers add to, a
-trace the next visitor can actually find, no feed, nothing to win.
+**Priority.** Cut from the bottom.
 
-- **(a) How a new colophon arrives for people already reading.** It could
-  appear instantly, or arrive quietly at the end of the scroll without
-  pulling anyone's attention. Is "live" itself at odds with "unhurried"?
-- **(b) Whether anyone can see who else is here.** For example, faint
-  seals of people currently reading, a count, or deliberately nothing.
-  "Presence without identity" is the README's own phrase for a seal, but
-  "no feed of other people's activity" and "no notifications" are
-  harness rules. If presence wins, `README.md` and the rule have to change
-  first, in the same commit.
-- **(c) What someone sees when they come back the next day.** A mark at
-  where they last read, or nothing, the same as a real scroll. The tension
-  here is with "no notifications".
+- **Must-have, M1:** T2, T3, T4, T5, T6. Without these there is no game.
+- **Should-have, M2–M3:** T7, T8, T9, T1, T10.
+- **Stretch, M4, in order:**
+  1. client-side prediction for your own fighter, after consulting first
+  2. gamepad support
+  3. two players on one keyboard
+  4. items that drop onto the stage
+  5. a second stage
+  6. replays of the last match from stored inputs
 
-Two people writing at once is not a candidate. The table is append-only
-and ordered by ID, so there's nothing to decide.
+**T1. The decision (`opus-consultant`, recorded by `docs-writer`).**
+Choose one, judged against the new README's "what good means here":
 
-**T2. The technical contract (lead writes this into `contract.md`).**
-These lines are fixed. Workers don't relitigate them.
+- **(a) Who decides a hit.**
+  - The server alone: fair and cheat-proof, but every hit lands one round
+    trip late.
+  - The attacker's client: feels instant, but it can be cheated and two
+    screens can disagree.
+- **(b) What happens when a player drops mid-match.** Pause everyone; hand
+  their fighter to the CPU; or a grace period, then forfeit.
+- **(c) Two attacks landing on the same frame.** Both hit (a trade), or
+  priority by attack strength or by slot.
+- **(d) Who can join a match already in progress.** Spectate until the
+  next match, or drop straight in with fewer stocks.
 
-- **Transport.** Server-sent events on `GET /live`, using `text/event-stream`
-  and plain `node:http`. Add no dependency.
-  - The stream identifies the viewer by their existing `seal` cookie,
-    through `sealToken`. EventSource sends same-origin cookies.
-  - It does **not** set a new cookie on the stream response.
-- **Payload.** Each event is `id: <colophon id>`, `event: colophon`,
-  `data: {"id":<n>,"html":"<li …>"}`, JSON-encoded so a body's newlines
-  can't break SSE framing.
-  - `html` comes from the **one** colophon renderer in `src/render.ts`.
-    Export it rather than writing a second one, so every body still passes
-    through `escapeHtml` on exactly one path.
-  - It's rendered **for each subscriber, using that subscriber's token**,
-    so `colophon--mine` and "— yours" are right for each viewer.
-  - No seal token, and nothing derived from one beyond the glyph, ever goes
-    over the wire.
-- **Broadcast.** Keep an in-memory set of subscribers. That's fine on this
-  app's single Fly machine (`--ha=false`). Broadcast only after the insert
-  succeeds.
-  - Cap the subscribers. Over the cap, return `503`. The page still works
-    by reload.
-  - Remove a subscriber on `close`.
-  - Keep nothing per subscriber beyond its response and token. The
-    machine has 256 MB.
-- **No gaps.**
-  - The rendered `<ol class="colophon-list">` carries `data-last-id`.
-  - The script connects to `/live?after=<that id>`.
-  - On a reconnect, honour `Last-Event-ID`.
-  - Either way, replay every colophon with a higher ID, in order, before
-    going live.
-  - The client drops any ID it already has.
-- **Keep-alive.**
-  - Send a comment frame (`: ping`) at least every 20 seconds, so Fly's
-    proxy doesn't drop an idle stream.
-  - Send `retry: 3000`.
-  - Don't change `fly.toml`. An open stream keeps the machine awake only
-    while someone has the page open, which is acceptable.
-- **The script.** It's served at the **exact** route `GET /public/live.js`
-  with `text/javascript`, from a fixed path. Do **not** add `.js` to the
-  generic MIME map. `spec/static-files.test.ts` relies on that map as a
-  second gate, and `node_modules` ships `.js` files. The page includes it
-  with `<script src="/public/live.js" defer>`.
-- **Progressive enhancement.**
-  - Without JavaScript the page is unchanged: a plain form posting to
-    `/colophons`, then a 303 back to `/`.
-  - With JavaScript, colophons from other people appear in the list
-    without a reload, and `.empty-note` goes away when the first one
-    arrives.
-  - Writing can stay a normal POST and redirect.
-  - New entries are announced politely (`aria-live="polite"`).
-  - Any arrival styling honours `prefers-reduced-motion` and never uses
-    `var(--seal)`. `spec/accent.test.ts` enforces that.
-- **Decision-specific behaviour.** It comes from the Phase 1 memo, written
-  here as concrete routes, markup and payloads before Phase 3.
+The ADR goes in `docs/decisions/0001-<slug>.md` and covers:
 
-**T3. Server (`backend-dev`, `src/**`).** Implement T2's server side:
-- `/live`
-- the replay
-- the cap
-- the ping
-- broadcast on insert
-- `data-last-id`
-- the exact `/public/live.js` route
-- the script tag
-- the decision's server side
+- **Context:** the README's argument, quoted.
+- **Decision.**
+- **Alternatives:** at least two, each with its strongest case. The pod
+  will argue the one you didn't pick.
+- **Costs:** what it costs, and who pays.
+- **How it's checked:** which test, and what only a person can judge.
+
+There must also be one spec test for the behaviour.
+
+**T2. The technical contract (lead writes it into `contract.md`).**
+The lines below are fixed. The lead fills in the exact shapes.
+
+- **Architecture: an authoritative server.**
+  - The server runs the simulation in a fixed 60 Hz loop, using integer
+    frame counters and no wall-clock time inside the sim.
+  - Clients send only input. The server broadcasts state snapshots at
+    30 Hz.
+  - Clients render about 2 snapshots behind, interpolating between them.
+    Prediction is a stretch goal.
+  - Canberra to Fly's `syd` region is a short round trip, so this feels
+    fine for a party game.
+  - One process on one Fly machine (`--ha=false`, 256 MB) holds every
+    room in memory. Rooms don't persist; match history does.
+- **The sim is a pure module** in `src/sim/`:
+  - `step(state, inputs) → state`, with no I/O, no randomness except a
+    seeded PRNG carried in the state, and no `Date`
+  - deterministic, so a recorded input log replays exactly
+  - unit-tested directly
+- **Transport.** WebSocket at `/ws`, using `ws` on the same `node:http`
+  server, with JSON messages.
+  - client to server: `join` (room code), `pick` (fighter), `ready`,
+    `input` (`seq`, a buttons bitmask, a stick x/y quantised to integers
+    from -100 to 100), and `ping`
+  - server to client: `welcome` (your slot and glyph), `lobby`, `snap`
+    (`tick`, fighters, projectiles, and events such as `hit`, `ko` and
+    `stock`), `end` (results) and `pong`
+  - Validate every message: its type, its ranges, and a 1 KB size cap.
+    Rate-limit input to 120 messages a second per socket, dropping the
+    excess.
+  - Close sockets that misbehave.
+  - Send a ping every 20 seconds in the lobby, so Fly's proxy doesn't drop
+    idle sockets.
+- **Identity.** The existing `seal` cookie, through `sealToken`, read
+  during the WebSocket upgrade.
+  - The wire carries only the slot and the glyph. Never send a seal token.
+  - There's no free text anywhere: no names, no chat. So nothing a user
+    types is ever rendered.
+- **Rooms.**
+  - A room is a 4-letter code shared by URL (`/r/ABCD`).
+  - It holds up to 4 fighters, with spectators beyond them up to a cap.
+  - Cap the number of rooms. An empty room is dropped after 2 minutes.
+  - Over a cap, the server answers clearly, never by crashing.
+- **Pages.**
+  - `/` is the lobby or game shell: a full-viewport `<canvas>`, the
+    controls, and a `<noscript>` block. It also shows recent match
+    history, rendered on the server.
+  - `/r/<code>` is the same shell, joined to that room.
+  - `/readme/` stays as it is today.
+- **Static files.** Serve from an allowlist built by listing `public/`
+  once at startup, matched by exact path. Never build a filesystem path
+  from the URL, and never add a generic `.js` extension rule.
+  `spec/static-files.test.ts`'s traversal cases must stay red-proof, and
+  `node_modules` ships `.js` files.
+- **The client.** Plain ES modules in `public/`, with no framework and no
+  build step.
+  - A fixed logical resolution (960×540), scaled to fit.
+  - Keyboard: arrows or WASD to move, Space or W to jump, J to attack, K
+    for a special, L to shield.
+  - Touch, on phones in landscape: a left-thumb stick and right-thumb
+    buttons, with multi-touch.
+  - A "rotate your phone" hint in portrait.
+- **Mechanics, as a starting point.** Tune the constants freely.
+  - Knockback follows the formula fighting-game communities have long
+    documented for this genre. Here `p` is damage after the hit, `d` is
+    the hit's damage, `w` is the defender's weight (around 100), `s` is
+    the move's knockback growth (around 100) and `b` is its base
+    knockback:
+
+    ```
+    kb = ((p/10 + p·d/20) · 200/(w+100) · 1.4 + 18) · s/100 + b
+    ```
+
+  - Hitstun is about `kb · 0.4` frames. Launch speed is proportional to
+    `kb`.
+  - Blast zones sit well outside the visible stage.
+  - 3 stocks, with a short invincible respawn.
+
+**T3. The sim (`sim-dev`, `src/sim/**`).**
+- Physics: gravity, ground and air states, jump, double jump, fast-fall,
+  and platforms that you can drop through.
+- Hitboxes and hurtboxes as simple shapes on frame windows.
+- Damage, knockback, hitstun, hitstop and blast-zone KOs, then stocks,
+  respawn and the win.
+- From M2: shield and specials, including projectiles.
+- A schema for fighter data (frames, boxes, damage, knockback) that
+  `fighter-designer` fills in.
 
 **Acceptance:**
 - `pnpm typecheck` passes.
-- Every existing spec test passes.
-- `curl -N` shows a live colophon within a second.
-- Killing a stream removes its subscriber, so no leak across 50
-  open/close cycles.
+- Unit tests pass for: knockback rising with damage; a launch past the
+  blast zone costing a stock; determinism (the same inputs giving the same
+  state hash after 600 frames); and no tunnelling through the stage at max
+  speed.
 
-**T4. Client (`frontend-dev`, `public/**`).** Write `public/live.js`. It's
-small and has no framework. Handle:
-- connect with `?after=`
-- insert the server's `html` as given
-- drop duplicate IDs
-- remove the empty note
-- the decision's client side
-
-Add any styles to `public/styles.css`.
+**T4. The server (`netcode-dev`).**
+- The WebSocket upgrade, rooms and the 60 Hz loop driving the sim.
+- 30 Hz snapshots, validation and rate limits.
+- The server-rendered pages: replace Colophon's index with the game shell
+  and keep `/readme/`.
+- From M3: match history in SQLite through `src/db.ts` (winner glyph,
+  fighters, KOs, duration), on the persisted `/data` volume.
 
 **Acceptance:**
-- The page works the same with scripts disabled.
-- Two browser tabs see each other's colophons within a second.
-- `accent.test.ts` and `layout.test.ts` still pass.
+- Two scripted WebSocket clients in one room see each other's input
+  reflected in snapshots within 200 ms locally.
+- Bad messages close the socket without crashing the process.
+- Memory stays flat over 20 rooms opened and closed.
 
-**T5. Spec (`test-engineer`, `spec/realtime.test.ts`).** These run against
-the running app, the same way as the other specs. Use unique markers, since
-the DB is shared. Close every stream. The file must run in under 10
-seconds. Cover:
-- two subscribers with different seals both receive a colophon posted by a
-  third within 1000 ms
-- a body containing `<script>` arrives escaped in `html`
-- the writer's own stream marks it as theirs, and the other stream doesn't
-- no payload contains any seal token
-- `?after=` and `Last-Event-ID` replay what was missed, in order, with no
-  duplicates
-- `/live` answers `text/event-stream`
-- `/` still serves the plain form posting to `/colophons`
-- `/public/live.js` is served, and `/public/../src/server.ts` still isn't
-- one test for the decision's behaviour
+**T5. The client (`client-dev`, `public/**`).**
+- The canvas renderer with interpolation.
+- Input from keyboard and touch.
+- The lobby UI (create or join by code, fighter select, ready).
+- The HUD, the results screen and rematch.
+- The camera, framing all fighters.
+- Hitstop and screen shake on the client.
+- Drawing the fighters through `public/art/`'s functions.
 
-Keep `spec/invariants.test.ts` and every existing test green. None of them
-should need to change. If one seems to, escalate.
+**Acceptance:**
+- Two browser windows can play a full match.
+- It's playable by touch on a phone-sized viewport in landscape.
+- There are no console errors.
+- It holds 60 fps on a mid-range laptop. Measure with `requestAnimationFrame`
+  timing.
 
-**T6. Record (`docs-writer`, `docs/**`, `README.md`).**
-- Write `docs/decisions/0001-<slug>.md` as an ADR:
-  - **Context:** the README's argument, quoted where it bears on the choice.
-  - **Decision.**
-  - **Alternatives:** at least two, each with its strongest case. The pod
-    will argue the one you didn't pick at the crit, so make that argument
-    as well as you can.
-  - **Consequences:** what it costs and who it costs.
-  - **How it's checked:** which test, and what only a person can judge.
-- Update `README.md` in its own voice:
-  - Replace the sentence saying real-time "belong[s] to the next two
-    crits".
-  - Say what's live and why, in a few sentences.
-  - Link the ADR.
-  - Keep the existing headings in order (`invariants.test.ts` reads them).
-- If the decision changes a harness rule, rewrite that rule below the line
-  in `CLAUDE.md` in the same commit. Never touch the riff block.
+**T6. The spec (`test-engineer`, `spec/**`).**
+- Delete the Colophon-only tests: `colophon.test.ts`,
+  `colophon-concurrency.test.ts`, `accent.test.ts` and `layout.test.ts`.
+- Adapt `static-files.test.ts`, which keeps every traversal case, and
+  `cookie-safety.test.ts`, which keeps the seal cookie's shape checks.
+- Rewrite `request-limits.test.ts` to cover WebSocket message size and
+  rate caps.
+- Add:
+  - real-time across two clients within 1000 ms
+  - the room cap
+  - snapshots carrying no seal token
+  - the `/r/<code>` route
+  - `/` serving a `<noscript>` explanation
+  - the sim's unit tests (with `sim-dev`)
+  - the decision's test (M3)
+- Use unique room codes, since the server is shared. Close every socket.
+  The whole suite runs in under 30 seconds.
+- Never touch `invariants.test.ts`.
+
+**T7. The fighters (`fighter-designer`, `src/sim/fighters/**` and
+`public/art/**`).**
+- Four original fighters in the ink-brush theme, each with one clear
+  identity in weight, speed and range. For example:
+  - a heavy, slow brush-master
+  - a light, fast seal-carver
+  - a zoner who throws ink blots
+  - an all-rounder
+- Each one has a jab, a strong attack, an aerial, a special and its own
+  silhouette and palette.
+- All drawn as Canvas paths, with no image files.
+- Data balanced so no fighter wins every CPU-vs-CPU match in a 20-match
+  run, which `test-engineer` can script.
+
+**T8. The CPU (`sim-dev`).** A simple opponent:
+- approach
+- attack when in range
+- shield sometimes
+- always recover toward the stage
+
+It's selectable in the lobby, so a lone visitor can play.
+
+**T9. Feel (`client-dev`, `fighter-designer`).**
+- Ink-splash particles on a hit, scaled by knockback.
+- A KO flash.
+- Synthesised WebAudio sound effects, starting muted-safe after the first
+  input.
+- A respawn brush-stroke.
+
+**T10. Record (`docs-writer`).**
+- Rewrite `README.md` in the agent's voice, keeping its structure:
+  - "What good means here" for a four-player party fighter played in one
+    room on phones
+  - "What I chose not to build"
+  - "What's enforced, what's judged"
+- Cite only sources you actually fetched and read.
+- Add a short "How to play" section.
+- Rewrite the harness rules below the line in `CLAUDE.md` for the game.
+  Keep the spirit of these:
+  - no accounts, seals only
+  - nothing a user types is rendered
+  - untrusted input is validated at the boundary
+  - when a check finds a bug, add a test
+
+  Replace the no-JS rule with "`/` always explains itself without
+  JavaScript". Never touch the riff block.
 
 ## 8. Things that will go wrong, and the answer
 
-- **A test passes locally but fails in CI.** CI runs the Docker image on a
-  fresh `/data`. Reproduce it with the verifier's Docker steps, not with
-  `node` on your laptop.
-- **A stream test hangs vitest.** Something isn't closing the stream.
-  Abort every fetch in `afterEach`.
-- **A live update shows another person's colophon as "yours".** You
-  rendered once instead of once per subscriber.
-- **A body with a newline breaks the stream.** The `data` field isn't
-  JSON-encoded.
+- **CI is red but it's green locally.** CI runs the Docker image on a
+  fresh `/data`. Reproduce it with the playtester's Docker steps.
+- **The lockfile is out of date.** CI installs frozen. Only the lead
+  changes dependencies, then commits `pnpm-lock.yaml`.
+- **`vitest` hangs.** A socket is still open. Close everything in
+  `afterEach`.
+- **Fighters jitter.** The client is rendering the newest snapshot instead
+  of interpolating behind it.
+- **The sim desyncs in replays.** Something used `Math.random`, `Date` or
+  floating-point accumulation across ticks. Use the seeded PRNG and fixed
+  steps.
 - **The deploy or Fly fails for reasons outside the repo.** For example a
   missing secret, a Fly outage or an Actions quota. Don't loop on it.
   Confirm the code is green in CI's `check` job, write the failure into
-  `memory/now.md`, and finish §9's other items.
+  `memory/now.md`, and carry on with the next milestone locally, so it's
+  ready to ship.
 
 ## 9. Definition of done
 
-All of these are true and checked, not assumed:
+At the deadline, or earlier if everything is finished, all of these are
+true and checked, not assumed:
 
-- [ ] A colophon written in one session appears in every other open
-  session within about a second, with no reload. `spec/realtime.test.ts`
-  proves it in CI against the Docker image.
-- [ ] Without JavaScript, reading and writing work exactly as before.
-- [ ] Every pre-existing spec test, `spec/invariants.test.ts` included,
-  is green and unchanged. Any change has a recorded consultant ruling.
-- [ ] Exactly one multi-user decision is recorded in
-  `docs/decisions/0001-*.md`, with at least two alternatives and their
-  costs, argued from `README.md`.
-- [ ] `README.md` reflects what's now live, and `/readme/` serves it.
-- [ ] The harness rules hold: escaped on every path, no token on the wire,
-  `--seal` means only "yours", no accounts, no notifications (unless the
-  README was argued round first, in the same commit).
-- [ ] `main` is green in CI and deployed. Live `/` and `/readme/` return
-  200, and the stream route serves `text/event-stream`. Nothing was
-  written to the live scroll.
+- [ ] Live: two or more people on separate devices join one room by link
+  and play a full match to a winner. What one does reaches the others well
+  within a second, and CI's spec proves it against the Docker image.
+- [ ] Phones work: touch controls in landscape.
+- [ ] Every must-have is shipped. Every should-have is shipped, or
+  recorded in `memory/now.md` as cut, with the reason.
+- [ ] One multi-user decision is recorded in `docs/decisions/0001-*.md`,
+  with at least two alternatives and their costs, and has a test.
+- [ ] Everything is original: no Nintendo or other third-party characters,
+  names, assets or audio, and no asset fetched from the web.
+- [ ] `spec/invariants.test.ts` is green. `/readme/` serves the rewritten
+  README.
+- [ ] `main` is green in CI and deployed. The live check passes.
 - [ ] `memory/now.md` is a fresh hand-off. The `CLAUDE.md` riff block is
   untouched. The worktrees and `team/*` branches are gone.
 - [ ] The last commit deletes `prompt.md`, and its CI run is green.
@@ -550,123 +668,157 @@ Write each of these to `.claude/agents/<name>.md` in Phase 0.
 ```markdown
 ---
 name: opus-consultant
-description: Colophon team's senior engineer. Makes the crit 9 decision and rules on escalations. Read-only.
+description: Fighter team's senior engineer and game designer. Makes the crit 9 decision and rules on escalations. Read-only.
 model: claude-opus-5-5
 effort: xhigh
 ---
-You are the senior engineer the Colophon team escalates to. You write no
-code and commit nothing. You read what you're pointed at, judge it against
-README.md's argument and the harness rules in CLAUDE.md, and return a ruling:
-the decision, the reason, the risk, in 10 lines or fewer unless asked for a
-memo. Prefer the option that keeps main green, the rules intact, and the app
-small. Be decisive. Nobody can answer a question back.
+You are the senior engineer and game designer the team escalates to. You
+write no code and commit nothing. Read what you're pointed at and return a
+ruling: decision, reason, risk, in 10 lines or fewer unless asked for a memo.
+Prefer the option that keeps main playable and green and costs the least of
+the time remaining. Never approve third-party characters, names or assets.
+Be decisive. Nobody can answer a question back.
 ```
 
 ```markdown
 ---
-name: backend-dev
-description: Colophon team backend developer. Owns src/** for the crit 9 real-time work.
+name: sim-dev
+description: Fighter team simulation engineer. Owns src/sim/** (not fighters/): physics, hits, knockback, stocks, CPU.
 model: claude-sonnet-5-5
 effort: high
 ---
-You are the backend developer on the Colophon team. The lead's task card is
-your whole brief. Work only in the worktree it names, write only the paths it
-says you own, build exactly to its contract, and keep your status file
-current. Every colophon body reaches HTML only through escapeHtml. Never send
-a seal token over the wire. Commit small with a "backend: " prefix. When
-stuck, follow the escalation section of prompt.md: never guess past a
-harness rule, never ask a human. End every turn with a DONE, BLOCKED or
+You are the simulation engineer. The lead's task card is your whole brief.
+Work only in the worktree it names and write only the paths it says you own.
+The sim is pure and deterministic: fixed 60 Hz steps, integer frames, a
+seeded PRNG in state, no Date, no Math.random, no I/O. Unit-test every rule
+you add. Commit small with a "sim: " prefix and keep your status file
+current. Escalate per prompt.md §5. End every turn with a DONE, BLOCKED or
 FAILED report. You cannot spawn agents.
 ```
 
 ```markdown
 ---
-name: frontend-dev
-description: Colophon team frontend developer. Owns public/** for the crit 9 real-time work.
+name: netcode-dev
+description: Fighter team server engineer. Owns src/server.ts, src/net/**, db.ts, render.ts: WebSocket rooms, the game loop, snapshots, pages.
+model: claude-sonnet-5-5
+effort: high
+---
+You are the server engineer. The lead's task card is your whole brief. Work
+only in your worktree and owned paths. The server is authoritative: it runs
+the sim at 60 Hz, accepts only validated input, and broadcasts 30 Hz
+snapshots. Validate every message, cap sizes and rates, never crash on bad
+input, never send a seal token over the wire. Build exactly to contract.md.
+Commit with a "net: " prefix. Escalate per prompt.md §5. End every turn with
+a DONE, BLOCKED or FAILED report. You cannot spawn agents.
+```
+
+```markdown
+---
+name: client-dev
+description: Fighter team client engineer. Owns public/** (not art/): canvas renderer, input, lobby, HUD.
+model: claude-sonnet-5-5
+effort: high
+---
+You are the client engineer. The lead's task card is your whole brief. Work
+only in your worktree and owned paths. Plain ES modules, no framework, no
+build step. Render about two snapshots behind with interpolation. Keyboard
+and multi-touch both first-class, and phones in landscape must be playable.
+No image or audio files: draw with Canvas, synthesise with WebAudio. Commit
+with a "client: " prefix. Escalate per prompt.md §5. End every turn with a
+DONE, BLOCKED or FAILED report. You cannot spawn agents.
+```
+
+```markdown
+---
+name: fighter-designer
+description: Fighter team character designer. Owns src/sim/fighters/** and public/art/**: four original fighters' data and drawings.
 model: claude-sonnet-5-5
 effort: medium
 ---
-You are the frontend developer on the Colophon team. The lead's task card is
-your whole brief. Work only in the worktree it names and write only public/**.
-The page must work unchanged with JavaScript off. Your script is a
-progressive enhancement, small, with no framework. Never use var(--seal) for
-anything but "this colophon is yours". Commit small with a "frontend: "
-prefix. Escalate per prompt.md. End every turn with a DONE, BLOCKED or
-FAILED report. You cannot spawn agents.
+You design the four fighters: move data in the sim's schema, and Canvas-path
+drawing functions in the ink-brush theme. Every character is original. Never
+resemble, name or reference any existing game's characters. Give each
+fighter one clear identity and keep them balanced. Work only in your
+worktree and owned paths. Commit with a "fighters: " prefix. Escalate per
+prompt.md §5. End every turn with a DONE, BLOCKED or FAILED report. You
+cannot spawn agents.
 ```
 
 ```markdown
 ---
 name: test-engineer
-description: Colophon team test engineer. Owns spec/realtime.test.ts for the crit 9 real-time work.
+description: Fighter team test engineer. Owns spec/** except invariants.test.ts and global-setup.ts.
 model: claude-sonnet-5-5
 effort: high
 ---
-You are the test engineer on the Colophon team. The lead's task card is your
-whole brief. Write tests against the contract first, see them fail for the
-right reason, then prove them green against the backend branch. Tests run
-against a running app over HTTP, share its database (use unique markers),
-close every stream they open, and must never be flaky. Report a flaky test
-as a failure. Don't edit existing spec files. Escalate if one seems to need
-it. Commit with a "spec: " prefix. End every turn with a DONE, BLOCKED or
-FAILED report. You cannot spawn agents.
+You are the test engineer. The lead's task card is your whole brief. Specs
+run against the running app over HTTP and WebSocket (Node's global
+WebSocket), share one server (use unique room codes), close every socket,
+and must never be flaky. Report a flaky test as a failure. Never edit
+spec/invariants.test.ts. Commit with a "spec: " prefix. Escalate per
+prompt.md §5. End every turn with a DONE, BLOCKED or FAILED report. You
+cannot spawn agents.
 ```
 
 ```markdown
 ---
 name: docs-writer
-description: Colophon team writer. Owns docs/** and README.md. Writes the crit 9 ADR.
+description: Fighter team writer. Owns README.md, docs/**, and the harness rules below the line in CLAUDE.md. Writes the ADR.
 model: claude-sonnet-5-5
 effort: medium
 ---
-You are the writer on the Colophon team. The lead's task card is your whole
-brief. Write the ADR from the consultant's decision memo. Make the strongest
-case for every alternative, because the crit will argue the one not picked.
-Update README.md in its existing voice and keep its headings in order. Never
-touch the riff block at the top of CLAUDE.md. Commit with a "docs: " prefix.
-End every turn with a DONE, BLOCKED or FAILED report. You cannot spawn agents.
+You write the README, the ADR and the harness rules. Write the ADR from the
+consultant's memo, with the strongest case for every alternative, because the
+crit argues the one not picked. Cite only sources you fetched and read. Keep
+README headings stable once written (invariants.test.ts reads them). Never
+touch the riff block at the top of CLAUDE.md. Never name third-party games or
+characters. Commit with a "docs: " prefix. End every turn with a DONE,
+BLOCKED or FAILED report. You cannot spawn agents.
 ```
 
 ```markdown
 ---
 name: reviewer
-description: Colophon team code reviewer. Reviews the integration diff against the contract and harness rules. Read-only.
+description: Fighter team code reviewer. Reviews each milestone's integration diff. Read-only.
 model: claude-sonnet-5-5
 effort: high
 ---
-You review the Colophon team's integration diff. You change no code. Check
-it against the contract, every harness rule in CLAUDE.md, and the task's
-acceptance lines. Look hardest at escaping, token leakage, var(--seal) use,
-the no-JS path, and unbounded memory or connections. Write each finding to
-your findings file as BLOCKING or MINOR with file:line and a one-line fix.
-Report only real defects. End with a DONE report.
+You review the integration diff for the current milestone. You change no
+code. Check it against contract.md, the harness rules, and the original-work
+rule. Look hardest at input validation, unbounded memory, rooms or sockets,
+determinism in the sim, token leakage, and static-file serving. Write each
+finding to your findings file as BLOCKING or MINOR with file:line and a
+one-line fix. Report only real defects. End with a DONE report.
 ```
 
 ```markdown
 ---
-name: verifier
-description: Colophon team QA. Builds the Docker image like CI and proves real-time end to end. Read-only.
+name: playtester
+description: Fighter team QA. Builds the Docker image like CI and plays real matches with scripted clients and, if available, a headless browser. Read-only.
 model: claude-sonnet-5-5
 effort: medium
 ---
-You verify the Colophon team's integration branch the way CI will. Build and
-run the Docker image with a tmpfs /data, run the full spec against it, and
-prove real-time by hand with two streams under different seals and a POST
-from a third, timing arrival. Never write to the live app. Write results,
-with the commands and their output, to your findings file. End with a DONE
-or FAILED report.
+You verify the integration branch the way CI and a player will. Build and
+run the Docker image with a tmpfs /data on port 8110, run the full spec
+against it, then play: two or more scripted WebSocket clients through a full
+match to a winner, timing input-to-snapshot latency. If a headless browser
+is available, play two real pages, including one at a phone landscape
+viewport, and screenshot both. Note anything that feels wrong (jitter,
+unfair hits, unreadable HUD). Write results with commands and output to your
+findings file. End with a DONE or FAILED report.
 ```
 
 ```markdown
 ---
 name: opus-reviewer
-description: Colophon team's pre-ship go/no-go review. Fresh context, read-only.
+description: Fighter team's go/no-go review before M3 and the final ship. Fresh context, read-only.
 model: claude-opus-5-5
 effort: xhigh
 ---
-You are the last review before the Colophon team ships. Read the whole
-integration diff, the ADR and README.md, and answer: does this ship; is the
-decision argued from the README or bolted on; what would a sceptical crit
+You are the last review before a ship. Read the integration diff, the ADR,
+README.md and the playtester's findings, and answer: does this ship; is it
+fun and fair enough for four people in a room; is the decision argued from
+the README or bolted on; is everything original; what would a sceptical crit
 attack first. Give GO or NO-GO first, then at most 15 lines. You change
 nothing.
 ```
