@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  BTN, FIGHTERS, GRACE_TICKS, INK_FRAMES, ITEM_INTERVAL, ITEM_JITTER, NO_INPUT, STAGE, cpuInput, createMatch, hashState, knockback, step,
+  BTN, FIGHTERS, GRACE_TICKS, STAGES, INK_FRAMES, ITEM_INTERVAL, ITEM_JITTER, NO_INPUT, STAGE, cpuInput, createMatch, hashState, knockback, step,
 } from "../src/sim/index.ts";
 import type { Input, MatchState } from "../src/sim/index.ts";
 
@@ -608,5 +608,91 @@ describe("cpu-only endings", () => {
       }
       expect(s.phase, `seed ${seed}`).toBe("ended");
     }
+  });
+});
+
+describe("second stage: pinecliff", () => {
+  const P = STAGES.pinecliff;
+  const mk = (seed = 3) => {
+    let s = createMatch(
+      [{ slot: 0, fighter: "wanderer" }, { slot: 1, fighter: "wanderer" }],
+      seed,
+      { stage: "pinecliff" },
+    );
+    while (s.phase === "countdown") s = step(s, []);
+    return s;
+  };
+  it("defaults to riverbank and records the stage", () => {
+    expect(createMatch([], 1).stage).toBe("riverbank");
+    expect(mk().stage).toBe("pinecliff");
+    expect(STAGE).toBe(STAGES.riverbank);
+  });
+  it("spawns on pinecliff's ground and stays on it", () => {
+    let s = mk();
+    expect(f(s, 0).x).toBe(P.spawns[0].x);
+    s = run(s, 60, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 0).grounded).toBe(true);
+    expect(f(s, 0).y).toBe(0);
+  });
+  it("walking off pinecliff's edge (x=230) falls, where riverbank would still hold", () => {
+    let s = mk();
+    s = edit(s, 0, { x: 220 });
+    s = run(s, 15, [IN(0, 100), NO_INPUT]);
+    expect(f(s, 0).x).toBeGreaterThan(230);
+    expect(f(s, 0).grounded).toBe(false);
+  });
+  it("a jump in place lands where it started", () => {
+    let s = mk();
+    s = edit(s, 0, { x: -100 });
+    s = step(s, [IN(BTN.JUMP), NO_INPUT]);
+    for (let i = 0; i < 200; i++) {
+      s = step(s, [NO_INPUT, NO_INPUT]);
+      if (f(s, 0).grounded && i > 3) break;
+    }
+    expect(f(s, 0).grounded).toBe(true);
+    expect(Math.abs(f(s, 0).x + 100)).toBeLessThan(3);
+  });
+  it("lands on its high platform and respects its tighter blast zone", () => {
+    let s = mk();
+    s = edit(s, 0, { x: 100, y: -400, grounded: false, vy: 0 });
+    for (let i = 0; i < 120 && !f(s, 0).grounded; i++) s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 0).y).toBe(-150);
+    s = edit(s, 1, { x: 710, y: -100 });
+    s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(f(s, 1).stocks).toBe(2);
+  });
+  it("ledge assist works on its edges", () => {
+    for (const side of [-1, 1]) {
+      let s = mk();
+      const edge = side < 0 ? P.ground.x1 : P.ground.x2;
+      s = edit(s, 0, { x: edge + side * 10, y: 20, vy: 2, vx: 0, grounded: false });
+      s = step(s, [IN(0, -side * 100), NO_INPUT]);
+      expect(f(s, 0).grounded).toBe(true);
+      expect(f(s, 0).x).toBeCloseTo(edge - side * 4, 0);
+    }
+  });
+  it("the cpu recovers toward pinecliff's ground", () => {
+    let s = mk();
+    s = edit(s, 0, { x: -290, y: 40, grounded: false, vy: -6, jumpsLeft: 1, cpu: true });
+    expect(cpuInput(s, 0).x).toBeGreaterThan(0);
+    for (let i = 0; i < 200; i++) s = step(s, [cpuInput(s, 0), NO_INPUT]);
+    expect(f(s, 0).stocks).toBe(3);
+    expect(Math.abs(f(s, 0).x)).toBeLessThan(260);
+  });
+  it("item drops land inside pinecliff's ground span", () => {
+    let s = mk();
+    for (let i = 0; i < 2000 && s.items.length === 0; i++) s = step(s, [NO_INPUT, NO_INPUT]);
+    expect(s.items.length).toBe(1);
+    expect(Math.abs(s.items[0].x)).toBeLessThanOrEqual(230);
+  });
+  it("is deterministic per stage, and the stages differ", () => {
+    const go = (stage: "riverbank" | "pinecliff") => {
+      let s = createMatch([{ slot: 0, fighter: "brush" }, { slot: 1, fighter: "blot" }], 21, { stage });
+      for (let t = 0; t < 900; t++) s = step(s, [IN(t % 31 === 0 ? BTN.JUMP : t % 23 === 0 ? BTN.ATTACK : 0, (t % 120) - 60), IN(t % 47 === 0 ? BTN.SPECIAL : 0, 40)]);
+      return hashState(s);
+    };
+    expect(go("pinecliff")).toBe(go("pinecliff"));
+    expect(go("riverbank")).toBe(go("riverbank"));
+    expect(go("pinecliff")).not.toBe(go("riverbank"));
   });
 });

@@ -2,6 +2,9 @@
 // never imports this (it's plain JS with no build step); the wire shapes it
 // reads are in src/net/protocol.ts, built from these.
 
+import type { StageId } from "./stage.ts";
+export type { StageId } from "./stage.ts";
+
 export type FighterId = "brush" | "carver" | "blot" | "wanderer";
 export const FIGHTER_IDS: readonly FighterId[] = ["brush", "carver", "blot", "wanderer"];
 
@@ -182,6 +185,7 @@ export interface MatchState {
   rng: number; // uint32 PRNG state (mulberry32 or similar), the only randomness
   fighters: (FighterState | null)[]; // length MAX_FIGHTERS, indexed by slot
   projectiles: ProjectileState[];
+  stage: StageId;
   nextId: number;
   items: ItemState[];
   nextItemTick: number | null; // tick of the next drop; 0 = unscheduled; null = items off
