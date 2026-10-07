@@ -32,9 +32,15 @@ grace period (900 ticks of the 60 Hz sim):
   fighter, which respawns with invincibility, keeping its damage and stocks;
 - after 15 seconds the player forfeits: stocks go to zero and the match
   carries on without them;
-- the match cannot end while anyone is in grace, so a drop never hands anyone
-  a win by default before the 15 seconds are up.
-
+- a drop never hands anyone a win by default before the 15 seconds are up
+  (the last other fighter standing does not end the match while someone is in
+  grace), but the four-minute time limit still ends the match regardless,
+  ranked by stocks then damage, an absent fighter ranked like everyone else;
+- during a match, hiding the tab (switching apps, locking the phone) closes
+  the socket, so the grace starts at once and coming back rejoins as the same
+  seal, rather than a backgrounded phone standing still on stage;
+- dropping while in hitstun (being launched) costs a stock immediately, as a
+  fall credited to whoever launched you, and then the normal grace follows;
 - a fresh socket with the same seal takes the seat over and the old socket is
   closed, because a phone switching from wifi to 4G can leave a half-open
   socket alive for longer than the grace period.
@@ -77,11 +83,12 @@ more often than laptops.
 - The dropped player pays: they lose their momentum and position, and after
   15 seconds their match is over.
 - The others pay a lull of up to 15 seconds in which one fighter is absent and
-  the match cannot end.
-- Deliberately dropping to dodge a finishing blow is possible. It is bounded
-  (15 seconds, then forfeit) and visible (the faint seal and countdown tell
-  the whole room what happened), which is the deterrent a room of friends
-  needs.
+  the last other fighter standing cannot end the match.
+- Dropping mid-launch costs the stock, so a finishing blow can't be dodged by
+  closing the app. A drop when you are not being launched still keeps your
+  stock and respawns you at the top with brief invincibility: that is the
+  remaining cost the others pay, bounded by the 15 seconds and visible (the
+  faint seal and countdown tell the room what happened).
 - One seal holds at most its own seat plus one local guest seat, and takeover
   and reclaim move both together. Two tabs in the same browser cannot both
   play (use another browser or profile).
@@ -95,8 +102,11 @@ more often than laptops.
   fighter back.
 - `spec/seat-takeover.test.ts`: a second socket with the same seal takes the
   seat and the first is closed.
-- `spec/sim.test.ts`: 900 ticks of null input from an absent fighter end in
-  forfeit and the other fighter wins.
+- `spec/sim.test.ts`: 900 ticks disconnected end in forfeit and the other
+  fighter wins.
+
+The hidden-tab behaviour is checked by hand in a browser, and a person should
+also check it on a real phone.
 
 What only a person can judge: whether 15 seconds feels right, on real phones,
 in a real room. Too short and a tunnel ruins a match; too long and the other

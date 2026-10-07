@@ -55,6 +55,8 @@ first, in the same commit.
   the primary button, focus rings, countdown, rotate hint, damage heat. Links
   are classic blue. The stage is ink wash on paper. Nothing else is coloured;
   grep every colour literal before claiming otherwise.
+- A hidden tab closes its socket mid-match so the drop grace is real; don't
+  remove that without changing the ADR first.
 - A player who drops gets the 15 s grace, and a fresh socket with the same
   seal takes the seat over, per
   `docs/decisions/0001-grace-then-forfeit-on-drop.md`. Change that file
