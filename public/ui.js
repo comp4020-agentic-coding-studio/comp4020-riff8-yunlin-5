@@ -33,7 +33,7 @@ export class UI {
     this.lobby = null;
     this.phase = "lobby";
     this.pickFor = 0; // 0 = picking for you, 1 = for the guest
-    this.hasKeyboard = matchMedia("(any-pointer: fine)").matches;
+    this.hasKeyboard = !isTouch || matchMedia("(any-pointer: fine)").matches; // hidden on touch-only devices
     this.mode = "none"; // lobby | match | results | none
     this.build();
   }
