@@ -11,6 +11,8 @@ import { Recording, type Cursor } from "./replay.ts";
 export const MAX_ROOMS = 50;
 export const MAX_SPECTATORS = 8;
 const MAX_REPLAYS = 8; // concurrent replays per room
+const MAX_REPLAYS_GLOBAL = 16; // across every room
+let activeReplays = 0;
 const MAX_FIGHTERS = 4;
 const RESULTS_MS = 6000;
 const EMPTY_ROOM_MS = 2 * 60 * 1000;
@@ -118,14 +120,15 @@ export class Room {
   join(client: Client): "room_full" | { rejoined: boolean } {
     const guestKey = `${client.token}#guest`;
     let took = false;
+    const replaced = new Set<Client>();
     for (const s of slots) {
       const seat = this.seats[s];
       if (!seat || seat.cpu || (seat.key !== client.token && seat.key !== guestKey)) continue;
       const old = seat.client;
-      if (old && old !== client) {
+      if (old && old !== client && !replaced.has(old)) {
+        replaced.add(old);
         this.clients.delete(old);
-        this.replays.delete(old);
-        this.replayPending.delete(old);
+        this.dropReplay(old);
         old.room = null;
         old.slot = null;
         old.guestSlot = null;
@@ -163,9 +166,7 @@ export class Room {
 
   leave(client: Client, now: number): void {
     if (!this.clients.delete(client)) return;
-    this.replays.delete(client);
-    this.replayPending.delete(client);
-    this.replaySpeed.delete(client);
+    this.dropReplay(client);
     client.room = null;
     for (const slot of [client.slot, client.guestSlot]) {
       if (slot === null) continue;
@@ -249,6 +250,8 @@ export class Room {
   setStage(client: Client, id: StageId): void {
     if (this.phase !== "lobby" || !this.mySeat(client)) return;
     this.stage = id;
+    // Nobody stays readied onto a stage they didn't see.
+    for (const seat of this.seats) if (seat && !seat.cpu) seat.ready = false;
     this.broadcastLobby();
   }
 
@@ -313,22 +316,33 @@ export class Room {
   /** Start (or restart) a replay of the last match for this socket. Lobby phase only. */
   startReplay(client: Client, speed: 1 | 2 | 4 = 1): void {
     if (this.phase !== "lobby" || !this.lastMatch || !this.clients.has(client)) return;
-    if (!this.replays.has(client) && this.replays.size >= MAX_REPLAYS) return;
+    if (!this.replays.has(client) && (this.replays.size >= MAX_REPLAYS || activeReplays >= MAX_REPLAYS_GLOBAL)) return;
+    this.dropReplay(client);
+    activeReplays++;
     this.replays.set(client, this.lastMatch.start());
     this.replaySpeed.set(client, speed);
   }
 
-  stopReplay(client: Client): void {
+  /** Forget a socket's replay (and its share of the global cap) without telling it. */
+  private dropReplay(client: Client): boolean {
     this.replayPending.delete(client);
     this.replaySpeed.delete(client);
-    if (this.replays.delete(client)) client.send(JSON.stringify({ t: "replayEnd" }));
+    if (!this.replays.delete(client)) return false;
+    activeReplays--;
+    return true;
+  }
+
+  /** The room is going away: release its replays' share of the global cap. */
+  dispose(): void {
+    for (const c of [...this.replays.keys()]) this.dropReplay(c);
+  }
+
+  stopReplay(client: Client): void {
+    if (this.dropReplay(client)) client.send(JSON.stringify({ t: "replayEnd" }));
   }
 
   private stopAllReplays(): void {
-    for (const c of this.replays.keys()) c.send(JSON.stringify({ t: "replayEnd" }));
-    this.replays.clear();
-    this.replayPending.clear();
-    this.replaySpeed.clear();
+    for (const c of [...this.replays.keys()]) this.stopReplay(c);
   }
 
   private tickReplays(): void {
@@ -481,6 +495,7 @@ export class RoomManager {
     if (this.rooms.size >= MAX_ROOMS) {
       const empties = [...this.rooms.values()].filter((r) => r.clients.size === 0).sort((a, b) => a.createdAt - b.createdAt);
       for (const r of empties) {
+        r.dispose();
         this.rooms.delete(r.code);
         if (this.rooms.size < MAX_ROOMS) break;
       }
@@ -514,6 +529,7 @@ export class RoomManager {
         console.error(`room ${room.code} tick failed`, err);
         // A room that throws every tick would spin forever: close it out.
         for (const c of [...room.clients]) c.close(1011, "internal error");
+        room.dispose();
         this.rooms.delete(room.code);
       }
     }
@@ -522,7 +538,10 @@ export class RoomManager {
   /** Drop rooms that have had no sockets for two minutes. */
   reap(now: number): void {
     for (const room of this.rooms.values()) {
-      if (room.emptySince !== null && now - room.emptySince >= EMPTY_ROOM_MS) this.rooms.delete(room.code);
+      if (room.emptySince !== null && now - room.emptySince >= EMPTY_ROOM_MS) {
+        room.dispose();
+        this.rooms.delete(room.code);
+      }
     }
   }
 }

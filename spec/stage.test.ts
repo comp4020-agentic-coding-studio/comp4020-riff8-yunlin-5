@@ -25,6 +25,19 @@ it("a seated player picks the stage, and the match is played on it", async () =>
   expect(xs.every((x: number) => x <= 160)).toBe(true);
 });
 
+it("changing the stage clears every human's ready", async () => {
+  const { c: a, welcome } = await clients.join(uniqueRoom());
+  let mark = a.mark();
+  a.send({ t: "ready", ready: true });
+  const ready = await a.waitFor((m) => m.t === "lobby" && m.players.every((p: any) => p.ready), 3000, mark);
+  expect(ready.players.length).toBe(1);
+  mark = a.mark();
+  a.send({ t: "stage", id: "pinecliff" });
+  const lobby = await a.waitFor((m) => m.t === "lobby" && m.stage === "pinecliff", 3000, mark);
+  expect(lobby.players.some((p: any) => p.ready)).toBe(false);
+  expect(welcome.slot).toBe(0);
+});
+
 it("an unknown stage id closes the socket", async () => {
   const { c } = await clients.join(uniqueRoom());
   c.send({ t: "stage", id: "nowhere" });
