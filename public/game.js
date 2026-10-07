@@ -13,6 +13,7 @@ const touch = isTouchDevice();
 if (touch) document.body.classList.add("touch");
 
 const renderer = new Renderer(canvas);
+renderer.touchHud = touch;
 const sfx = new Sfx();
 let lastCount = 0;
 let lastLeft = 0;

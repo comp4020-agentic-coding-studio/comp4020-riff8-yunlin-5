@@ -481,11 +481,12 @@ export class Renderer {
   drawHud(ctx, view) {
     const fs = view.fighters.filter((f) => f);
     const n = fs.length;
-    const bw = 190;
-    const gap = Math.min(30, (this.W - 40 - n * bw) / Math.max(1, n - 1));
+    const top = !!this.touchHud; // touch: cards on the top edge, clear of the thumb zones
+    const bw = top ? 170 : 190;
+    const gap = Math.min(top ? 14 : 30, (this.W - 40 - n * bw) / Math.max(1, n - 1));
     const total = n * bw + (n - 1) * gap;
     let x = (this.W - total) / 2;
-    const y = H - 70;
+    const y = top ? 8 : H - 70;
     for (const f of fs) {
       const col = SLOT_COLOURS[f.slot] || INK;
       ctx.save();
@@ -545,7 +546,7 @@ export class Renderer {
     ctx.font = `bold ${hot ? 40 : 34}px ${SERIF}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(txt, this.W / 2, 50);
+    ctx.fillText(txt, this.W / 2, this.touchHud ? 106 : 50);
     ctx.restore();
   }
 

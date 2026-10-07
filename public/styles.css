@@ -717,3 +717,8 @@ noscript a {
   border: 1px solid currentcolor;
   padding: 1px 8px;
 }
+
+body.touch .badge,
+body.touch .replaybar {
+  top: 76px;
+}
