@@ -3,14 +3,11 @@ import { randomUUID } from "node:crypto";
 const SEAL_COOKIE = "seal";
 const TEN_YEARS_SECONDS = 60 * 60 * 24 * 365 * 10;
 
-// Every token this server ever issues is a randomUUID(). A cookie claiming to
-// be "existing" is trusted verbatim and then written into the append-only
-// colophons table on every single insert from that visitor — so a well-formed
-// but arbitrary value (no decodeURIComponent error, just not a UUID) has to be
-// rejected on shape too, not only on decode failure. Without this, a crafted
-// Cookie header near Node's own ~16KB header-size ceiling persists that many
-// bytes, forever, on every colophon that visitor ever writes — unlike the
-// colophon body, which is capped at 320 characters at the same boundary.
+// The seal token is a server-side identity: it keys a player's seat in a room
+// (so a dropped socket can reclaim it, or a new one take it over) and is never
+// sent on the wire. Every token this server issues is a randomUUID(), so a
+// cookie that decodes fine but isn't one is rejected on shape too: otherwise a
+// crafted Cookie header could become an arbitrary seat key.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // A client can send any bytes it likes as a Cookie header, including a
