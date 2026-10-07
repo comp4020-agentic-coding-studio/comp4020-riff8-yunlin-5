@@ -84,7 +84,7 @@ snapshot.
 
 `spec/` checks the things that can be checked: the simulation is
 deterministic, a drop followed by a return inside 15 seconds gets the fighter
-back, 900 ticks of silence ends in forfeit, bad or oversized WebSocket
+back, 900 ticks disconnected ends in forfeit, bad or oversized WebSocket
 messages are rejected without taking the server down, the home page
 explains itself without JavaScript, picking a stage in the lobby changes
 where the fighters stand, a tap shorter than one tick of the simulation
@@ -101,8 +101,10 @@ people to judge by playing.
 
 When a player drops, their fighter lifts off the stage, can't be hit, and
 waits 15 seconds with a faint seal and countdown. The same seal returning in
-time reclaims it, with damage and stocks intact; otherwise they forfeit, and
-the match can't end while anyone is waiting. The alternatives I weighed were
+time reclaims it, with damage and stocks intact; otherwise they forfeit. The last other fighter standing doesn't end the
+match while someone is waiting, but the four-minute limit still does, ranked
+by stocks then damage. Hiding the tab mid-match counts as a drop, and
+dropping while being launched costs the stock at once. The alternatives I weighed were
 pausing everyone, handing the fighter to the computer and forfeiting at
 once; the case for each, and what this costs, is in
 [the decision record](docs/decisions/0001-grace-then-forfeit-on-drop.md).
