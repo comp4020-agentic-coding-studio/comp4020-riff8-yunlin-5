@@ -5,7 +5,6 @@ import type { Duplex } from "node:stream";
 import { WebSocketServer, WebSocket } from "ws";
 import { sealToken } from "../cookies.ts";
 import { sealGlyph } from "../seal.ts";
-import { NO_INPUT } from "../sim/index.ts";
 import { parseClientMessage } from "./protocol.ts";
 import { RoomManager, welcomeMessage, type Client } from "./rooms.ts";
 
@@ -29,7 +28,7 @@ const OTHER_RATE = 20; // per second, all other types together
 class Bucket {
   private tokens: number;
   private last: number;
-  private rate: number;
+  rate: number;
   constructor(rate: number, now: number) {
     this.rate = rate;
     this.tokens = rate;
@@ -100,9 +99,7 @@ export function attachWs(server: Server): NetHandle {
       glyph: sealGlyph(token),
       room: null,
       slot: null,
-      lastInput: NO_INPUT,
-      lastInputTick: 0,
-      latched: 0,
+      guestSlot: null,
       send(data) {
         if (ws.readyState !== WebSocket.OPEN) return;
         if (ws.bufferedAmount > MAX_BUFFERED) {
@@ -144,12 +141,9 @@ export function attachWs(server: Server): NetHandle {
         const now = performance.now();
         if (msg.t === "input") {
           if (!joined) return client.close(1008, "join first");
+          inputBucket.rate = client.guestSlot !== null ? INPUT_RATE * 2 : INPUT_RATE;
           if (!inputBucket.take(now)) return;
-          const room = client.room;
-          if (client.slot === null || !room?.state) return;
-          client.lastInput = { b: msg.b, x: msg.x, y: msg.y };
-          client.lastInputTick = room.state.tick;
-          client.latched |= msg.b;
+          client.room?.input(client, msg.p, msg.b, msg.x, msg.y);
           return;
         }
         if (!otherBucket.take(now)) return client.close(1008, "rate limit");
@@ -171,7 +165,9 @@ export function attachWs(server: Server): NetHandle {
           case "join":
             return client.close(1008, "already joined");
           case "pick":
-            return client.room?.pick(client, msg.fighter);
+            return client.room?.pick(client, msg.fighter, msg.p);
+          case "guest":
+            return client.room?.setGuest(client, msg.add);
           case "ready":
             return client.room?.setReady(client, msg.ready);
           case "cpu":
