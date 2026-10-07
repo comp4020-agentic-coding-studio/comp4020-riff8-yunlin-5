@@ -2,6 +2,8 @@ import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
+// The file keeps its old name, colophon.db: it is the one already on the Fly volume, and
+// renaming it would orphan it.
 // /data is the one thing that survives a restart or redeploy (fly.toml mounts
 // a volume there). Locally and in CI it exists too; only a bare local checkout
 // falls back to a repo-relative path.
