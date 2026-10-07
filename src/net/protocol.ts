@@ -71,6 +71,7 @@ export interface SnapFighter {
   shield: number;
   hitstun: boolean;
   hitstop: boolean;
+  inked: boolean;
   absent: boolean;
   graceLeft: number;
   out: boolean;
@@ -101,6 +102,7 @@ export function buildSnap(state: MatchState, glyphs: readonly string[], events: 
       shield: r1(f.shield),
       hitstun: f.hitstun > 0,
       hitstop: f.hitstop > 0,
+      inked: f.inked > 0,
       absent,
       graceLeft: absent ? Math.max(0, GRACE_TICKS - (state.tick - f.absentSince!)) : 0,
       out: f.stocks <= 0,
@@ -113,6 +115,7 @@ export function buildSnap(state: MatchState, glyphs: readonly string[], events: 
     phase: state.phase,
     countdown: state.phase === "countdown" ? Math.max(0, COUNTDOWN_TICKS - state.phaseTick) : 0,
     fighters,
+    items: state.items.map((i) => ({ id: i.id, kind: i.kind, x: r1(i.x), y: r1(i.y) })),
     projectiles: state.projectiles.map((p) => ({ id: p.id, owner: p.owner, x: r1(p.x), y: r1(p.y), r: p.r })),
     events,
   });
