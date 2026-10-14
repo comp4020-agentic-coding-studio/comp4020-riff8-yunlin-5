@@ -39,6 +39,10 @@ grace period (900 ticks of the 60 Hz sim):
 - during a match, hiding the tab (switching apps, locking the phone) closes
   the socket, so the grace starts at once and coming back rejoins as the same
   seal, rather than a backgrounded phone standing still on stage;
+- "Leave" in the pause menu is a drop like any other: the client closes its
+  socket and the same grace applies. The pause menu itself is local: that
+  screen stops sending input and the match does not stop for anyone, so a
+  paused fighter stands on stage and can be hit;
 - dropping while in hitstun (being launched) costs a stock immediately, as a
   fall credited to whoever launched you, and then the normal grace follows;
 - a fresh socket with the same seal takes the seat over and the old socket is
@@ -104,6 +108,8 @@ more often than laptops.
   seat and the first is closed.
 - `spec/sim.test.ts`: 900 ticks disconnected end in forfeit and the other
   fighter wins.
+- `spec/local-pause.test.ts`: a connected player who stops sending input stays
+  on stage, the match runs on for the other player, and input resumes cleanly.
 
 The hidden-tab behaviour is checked by hand in a browser, and a person should
 also check it on a real phone.

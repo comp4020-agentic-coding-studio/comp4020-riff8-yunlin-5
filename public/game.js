@@ -2,7 +2,7 @@
 
 import { Net } from "./net.js";
 import { Renderer } from "./render.js";
-import { Input, isTouchDevice } from "./input.js";
+import { Input, isTouchDevice, MENU_KEY } from "./input.js";
 import { UI } from "./ui.js";
 import { Sfx } from "./audio.js";
 
@@ -21,6 +21,8 @@ const input = new Input(touchRoot);
 let welcome = null;
 let lobby = null;
 let phase = "lobby";
+let menuOpen = false; // the local pause menu: this screen sends no input while it's open
+let left = false; // the player pressed Leave; the socket is closed until they come back
 let wantReplay = false; // a replay was asked for and has not ended
 let replaying = false;
 
@@ -56,6 +58,7 @@ const net = new Net({
       ui.setStatus("Connecting...");
       net.reconnect();
     };
+    setMenu(false);
     if (m.code === "replaced") ui.showBlocked("This seal is playing in another tab.", "Play here", again);
     else if (m.code === "room_full") ui.showBlocked("This room is full.", "Try again", again);
     else if (m.code === "rooms_full") ui.showBlocked("Every scroll is in use right now. Try again in a moment.", "Try again", again);
@@ -83,6 +86,7 @@ const net = new Net({
   lobby: (l) => {
     const prev = phase;
     if (l.phase !== "lobby" && l.phase !== prev && replaying) endReplay();
+    if (l.phase !== "match") setMenu(false);
     lobby = l;
     phase = l.phase;
     if (welcome && l.you !== undefined) welcome.slot = net.mySlot = l.you;
@@ -96,6 +100,7 @@ const net = new Net({
   },
   end: (e) => {
     phase = "results";
+    setMenu(false);
     sfx.play("end");
     ui.showResults(e);
   },
@@ -110,6 +115,8 @@ const ui = new UI(
     stage: (id) => net.send({ t: "stage", id }),
     ready: (ready) => net.send({ t: "ready", ready }),
     cpu: (add) => net.send({ t: "cpu", add }),
+    menu: (on) => setMenu(on),
+    leave: () => leaveRoom(),
     replay: (go) => {
       wantReplay = go;
       if (go) net.send({ t: "replay" });
@@ -123,6 +130,60 @@ const ui = new UI(
 );
 ui.setStatus("Connecting...");
 net.connect();
+
+function setMenu(on) {
+  on = on && !left && (phase === "match" && !replaying);
+  if (on === menuOpen) return;
+  if (on && inMatchSeat()) {
+    // Let go of everything once, so the fighter isn't left running on a held key
+    // for the server's stale-input window; then send nothing until Resume.
+    net.sendInput({ b: 0, x: 0, y: 0 });
+    if (input.guest) net.sendInput({ b: 0, x: 0, y: 0 }, 1);
+  }
+  menuOpen = on;
+  input.releaseAll();
+  ui.showMenu(on);
+}
+
+// Leave: close the socket like a hidden tab does, so the server's existing drop
+// path (ADR 0001) applies: grace, reclaim by the same seal, or forfeit.
+function leaveRoom() {
+  const code = welcome?.room || lobby?.room || "";
+  const seated = welcome?.slot != null && phase === "match";
+  setMenu(false);
+  ui.closeControls();
+  left = true;
+  net.leave();
+  renderer.reset();
+  ui.showBlocked(
+    seated
+      ? `You left room ${code}. Come back within 15 seconds to take your fighter over; after that it forfeits and the match goes on without you.`
+      : `You left room ${code}.`,
+    `Back to room ${code}`,
+    () => {
+      left = false;
+      ui.hideBlocked();
+      ui.setStatus("Connecting...");
+      net.reconnect();
+    },
+    true,
+  );
+}
+
+const inMatchSeat = () => !replaying && phase === "match" && welcome && welcome.slot != null;
+
+// Escape: close the controls list, else open or close the pause menu.
+addEventListener("keydown", (e) => {
+  if (e.code !== MENU_KEY || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!ui.blockedEl.hidden) return;
+  if (ui.controlsOpen) {
+    e.preventDefault();
+    ui.closeControls();
+  } else if (phase === "match" && !replaying) {
+    e.preventDefault();
+    setMenu(!menuOpen);
+  }
+});
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && phase === "match") net.suspend();
   else if (!document.hidden) net.resume();
@@ -164,7 +225,8 @@ let lastFrame = 0;
 let worst = 0;
 window.__fps = 0;
 window.__worstFrameMs = 0;
-window.__client = { net, renderer, input, get phase() { return phase; } };
+window.__client = { net, renderer, input, get phase() { return phase; }, get menuOpen() { return menuOpen; } };
+let padMenuWas = false;
 
 function frame(now) {
   if (lastFrame) worst = Math.max(worst, now - lastFrame);
@@ -179,7 +241,14 @@ function frame(now) {
     worst = 0;
   }
 
-  const inMatch = !replaying && phase === "match" && welcome && welcome.slot != null;
+  // Start on a pad toggles the menu, on the press only.
+  const padMenu = !!input.pollPad(0).menu;
+  if (padMenu && !padMenuWas && ui.blockedEl.hidden) {
+    if (ui.controlsOpen) ui.closeControls();
+    else setMenu(!menuOpen);
+  }
+  padMenuWas = padMenu;
+  const inMatch = inMatchSeat() && !menuOpen && !left;
   input.setActive(inMatch);
   let view;
   if (phase === "lobby" && !replaying) {

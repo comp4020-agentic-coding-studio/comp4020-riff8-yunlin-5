@@ -52,8 +52,8 @@ first, in the same commit.
 - Colour carries identity: each slot has one ink colour (`SLOT_COLOURS` in
   `public/render.js`). The page chrome uses vermilion `--seal` (the seal
   stamp's colour, also slot 0's) for what asks for your action or attention:
-  the primary button, focus rings, countdown, rotate hint, damage heat. Links
-  are classic blue. The stage is ink wash on paper. Nothing else is coloured;
+  the primary button, focus rings, the ? and Menu buttons, countdown, rotate
+  hint, damage heat. Links are classic blue. The stage is ink wash on paper. Nothing else is coloured;
   grep every colour literal before claiming otherwise.
 - A hidden tab closes its socket mid-match so the drop grace is real; don't
   remove that without changing the ADR first.
@@ -61,5 +61,11 @@ first, in the same commit.
   seal takes the seat over, per
   `docs/decisions/0001-grace-then-forfeit-on-drop.md`. Change that file
   before changing the behaviour.
+- The controls list (`public/controls.js`) is built from the key, pad and
+  touch maps in `public/input.js`; never hand-write a key name into it.
+  `spec/controls.test.ts` checks it.
+- The pause menu is local: it stops this screen's input and nothing else.
+  Leave closes the socket and takes the ADR 0001 drop path; no server message
+  pauses or leaves.
 - When a check finds a real bug, the fix is a new `spec/` test or a rule in
   this file, not just a patched line.

@@ -26,7 +26,7 @@ export class Net {
   }
 
   connect() {
-    if (this.suspended) return; // a retry timer firing while the tab is hidden
+    if (this.suspended || this.closedForGood) return; // a retry timer firing while hidden, or after Leave
     const url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
     const ws = new WebSocket(url);
     this.ws = ws;
@@ -84,6 +84,17 @@ export class Net {
     this.suspended = true;
     try {
       this.ws?.close(1000, "hidden");
+    } catch {}
+  }
+
+  // The player's own "Leave": a plain close, so the server takes the drop path
+  // of ADR 0001 (grace, then forfeit). No reconnect until reconnect() is called.
+  leave() {
+    this.closedForGood = true;
+    this.suspended = false;
+    this.clear();
+    try {
+      this.ws?.close(1000, "left");
     } catch {}
   }
 

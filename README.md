@@ -43,7 +43,15 @@ the air); S or down fast-falls, or drops through a platform; J attacks (hold
 a direction on the ground for a strong attack); K is your special; L shields.
 On a phone, hold it in landscape: a stick under the left thumb, buttons under
 the right. A gamepad works too, on the standard layout: A jumps, X attacks,
-B is your special, and the shoulders shield.
+B is your special, and the shoulders shield. The ? button in the top right
+lists the controls for your device at any time, mid-match included, without
+stopping anything.
+
+Escape (Start on a pad, or the Menu button on a phone) opens a pause menu on
+your own screen only: the match goes on for everyone else, and your fighter
+stands still and can be hit while it's open. From it you can resume, read the
+controls, or leave. Leaving is the same as your phone dropping: the 15 second
+grace starts, and coming back to the room in time takes your fighter over.
 
 Two people can share one device: in the lobby, "Add a second player here"
 seats a local guest with their own seal glyph. With a guest, the first player
