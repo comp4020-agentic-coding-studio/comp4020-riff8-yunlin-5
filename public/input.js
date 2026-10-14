@@ -1,13 +1,25 @@
 // Keyboard and multi-touch -> { b, x, y } (b: JUMP 1, ATTACK 2, SPECIAL 4, SHIELD 8).
+// The maps below are also what the in-game controls list (controls.js) shows.
 
 const BTN = { jump: 1, attack: 2, special: 4, shield: 8 };
 // Raw key codes each player uses. Without a guest the arrows also drive P1.
-const P1 = { left: ["KeyA"], right: ["KeyD"], jump: ["KeyW", "Space"], down: ["KeyS"], attack: ["KeyJ"], special: ["KeyK"], shield: ["KeyL"] };
-const P1_ARROWS = { left: ["ArrowLeft"], right: ["ArrowRight"], jump: ["ArrowUp"], down: ["ArrowDown"] };
-const P2 = {
+export const P1 = { left: ["KeyA"], right: ["KeyD"], jump: ["KeyW", "Space"], down: ["KeyS"], attack: ["KeyJ"], special: ["KeyK"], shield: ["KeyL"] };
+export const P1_ARROWS = { left: ["ArrowLeft"], right: ["ArrowRight"], jump: ["ArrowUp"], down: ["ArrowDown"] };
+export const P2 = {
   left: ["ArrowLeft"], right: ["ArrowRight"], jump: ["ArrowUp"], down: ["ArrowDown"],
   attack: ["Comma"], special: ["Period"], shield: ["Slash", "ShiftRight"],
 };
+// Opens the pause menu; never a game key.
+export const MENU_KEY = "Escape";
+// Standard-layout gamepad button indices. The left stick also moves.
+export const PAD = { left: [14], right: [15], down: [13], jump: [0, 3, 12], attack: [2], special: [1], shield: [4, 5, 6, 7], menu: [9] };
+// On-screen buttons, right thumb: glyph on the button, English caption under it.
+export const TOUCH_BUTTONS = [
+  { name: "shield", glyph: "盾", cap: "shield" },
+  { name: "special", glyph: "墨", cap: "ink" },
+  { name: "attack", glyph: "擊", cap: "attack" },
+  { name: "jump", glyph: "躍", cap: "jump" },
+];
 const KNOWN = new Set([...Object.values(P1), ...Object.values(P2)].flat());
 
 export const isTouchDevice = () =>
@@ -70,12 +82,12 @@ export class Input {
     this.knob_el = el("div", "stick-knob");
     this.base_el.appendChild(this.knob_el);
     const pad = el("div", "btn-pad");
-    const mk = (name, label) => {
+    const mk = ({ name, glyph, cap }) => {
       const b = el("button", "tbtn tbtn-" + name);
       b.type = "button";
-      b.textContent = label;
+      b.textContent = glyph;
       b.setAttribute("aria-label", name);
-      b.dataset.cap = name === "special" ? "ink" : name;
+      b.dataset.cap = cap;
       const set = this.btnPointers[name];
       b.addEventListener("pointerdown", (e) => {
         e.preventDefault();
@@ -94,12 +106,8 @@ export class Input {
       pad.appendChild(b);
       return b;
     };
-    this.btnEls = {
-      shield: mk("shield", "盾"),
-      special: mk("special", "墨"),
-      attack: mk("attack", "擊"),
-      jump: mk("jump", "躍"),
-    };
+    this.btnEls = {};
+    for (const t of TOUCH_BUTTONS) this.btnEls[t.name] = mk(t);
     const hint = el("div", "stick-hint");
     hint.textContent = "move";
     zone.append(hint);
@@ -167,7 +175,9 @@ export class Input {
     // P1 uses the first connected pad; the guest uses the second (and nothing if there is only one)
     const live = [...(pads ?? [])].filter((p) => p && p.connected);
     for (const p of live.slice(which, which + 1)) {
+      if (PAD.menu.some((i) => p.buttons[i]?.pressed)) out.menu = true;
       const bt = (i) => !!p.buttons[i]?.pressed;
+      const any = (list) => list.some(bt);
       let ax = p.axes[0] || 0;
       let ay = p.axes[1] || 0;
       const mag = Math.hypot(ax, ay);
@@ -182,15 +192,15 @@ export class Input {
       }
       let x = Math.round(Math.max(-1, Math.min(1, ax)) * 100);
       let y = Math.round(Math.max(-1, Math.min(1, ay)) * 100);
-      if (bt(14)) x = -100;
-      if (bt(15)) x = 100;
-      if (bt(13)) y = 100;
+      if (any(PAD.left)) x = -100;
+      if (any(PAD.right)) x = 100;
+      if (any(PAD.down)) y = 100;
       out.x = x;
       out.y = y;
-      if (bt(0) || bt(3) || bt(12)) out.b |= BTN.jump;
-      if (bt(2)) out.b |= BTN.attack;
-      if (bt(1)) out.b |= BTN.special;
-      if (bt(4) || bt(5) || bt(6) || bt(7)) out.b |= BTN.shield;
+      if (any(PAD.jump)) out.b |= BTN.jump;
+      if (any(PAD.attack)) out.b |= BTN.attack;
+      if (any(PAD.special)) out.b |= BTN.special;
+      if (any(PAD.shield)) out.b |= BTN.shield;
       break;
     }
     return out;

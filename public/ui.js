@@ -3,6 +3,7 @@
 
 import { drawFighter, FIGHTER_INFO } from "./art/fighters.js";
 import { SLOT_COLOURS } from "./render.js";
+import { controlsFor } from "./controls.js";
 
 // Line sketches for the stage picker: ground and platforms in world units.
 const SKETCH = {
@@ -35,6 +36,9 @@ export class UI {
     this.pickFor = 0; // 0 = picking for you, 1 = for the guest
     this.hasKeyboard = !isTouch || matchMedia("(any-pointer: fine)").matches; // hidden on touch-only devices
     this.mode = "none"; // lobby | match | results | none
+    this.menuOpen = false;
+    this.controlsOpen = false;
+    this.controlsFromMenu = false;
     this.build();
   }
 
@@ -153,10 +157,137 @@ export class UI {
     bp.append(this.blockedText, this.blockedBtn);
     this.blockedEl.append(bp);
 
-    r.append(this.status, this.lobbyEl, this.resultsEl, this.badge, this.replayBar, this.blockedEl);
+    this.blockedHome = h("a", "blocked-home", "Start a new room");
+    this.blockedHome.href = "/";
+    this.blockedHome.hidden = true;
+    bp.append(this.blockedHome);
+
+    // top-right: Controls (any time) and Menu (in a match)
+    this.corner = h("div", "corner");
+    this.helpBtn = h("button", "corner-btn", "?");
+    this.helpBtn.type = "button";
+    this.helpBtn.setAttribute("aria-label", "Controls");
+    this.helpBtn.title = "Controls";
+    this.helpBtn.onclick = () => (this.controlsOpen ? this.closeControls() : this.openControls(false));
+    this.menuBtn = h("button", "corner-btn", "Menu");
+    this.menuBtn.type = "button";
+    this.menuBtn.hidden = true;
+    this.menuBtn.onclick = () => this.on.menu(!this.menuOpen);
+    this.corner.append(this.helpBtn, this.menuBtn);
+
+    // local pause menu: only this screen stops sending input, the match goes on
+    this.menuEl = h("div", "overlay");
+    this.menuEl.hidden = true;
+    const mp = h("section", "panel menu-panel");
+    mp.setAttribute("role", "dialog");
+    mp.setAttribute("aria-modal", "true");
+    mp.setAttribute("aria-labelledby", "menu-title");
+    this.menuTitle = h("h2", "menu-title");
+    this.menuTitle.id = "menu-title";
+    this.menuText = h("p", "menu-text");
+    this.resumeBtn = h("button", "btn primary", "Resume");
+    this.resumeBtn.type = "button";
+    this.resumeBtn.onclick = () => this.on.menu(false);
+    const ctl = h("button", "btn", "Controls");
+    ctl.type = "button";
+    ctl.onclick = () => this.openControls(true);
+    this.leaveBtn = h("button", "btn", "Leave the match");
+    this.leaveBtn.type = "button";
+    this.leaveBtn.onclick = () => this.on.leave();
+    const mrow = h("div", "menu-row");
+    mrow.append(this.resumeBtn, ctl, this.leaveBtn);
+    mp.append(this.menuTitle, this.menuText, mrow);
+    this.menuEl.append(mp);
+
+    // controls reference: never pauses anything
+    this.controlsEl = h("div", "overlay light");
+    this.controlsEl.hidden = true;
+    this.controlsEl.onclick = (e) => e.target === this.controlsEl && this.closeControls();
+    const cp = h("section", "panel controls-panel");
+    cp.setAttribute("role", "dialog");
+    cp.setAttribute("aria-labelledby", "controls-title");
+    const ch = h("h2", "menu-title", "Controls");
+    ch.id = "controls-title";
+    this.controlsBody = h("div", "controls-body");
+    this.controlsClose = h("button", "btn", "Close");
+    this.controlsClose.type = "button";
+    this.controlsClose.onclick = () => this.closeControls();
+    cp.append(ch, this.controlsBody, this.controlsClose);
+    this.controlsEl.append(cp);
+
+    r.append(this.status, this.lobbyEl, this.resultsEl, this.badge, this.replayBar, this.corner, this.menuEl, this.controlsEl, this.blockedEl);
   }
 
-  showBlocked(text, label, onClick) {
+  spectating() {
+    return this.welcome?.slot == null;
+  }
+
+  // The pause menu. Player: Resume / Controls / Leave. Spectator: the same, worded for watching.
+  showMenu(on) {
+    this.menuOpen = on;
+    if (on) {
+      const code = this.lobby?.room || this.welcome?.room || "";
+      if (this.spectating()) {
+        this.menuTitle.textContent = "Watching room " + code;
+        this.menuText.textContent = "Nothing here stops the match.";
+        this.resumeBtn.textContent = "Back to watching";
+        this.leaveBtn.textContent = "Leave the room";
+      } else {
+        this.menuTitle.textContent = "Paused, on this screen only";
+        this.menuText.textContent =
+          "The match goes on for everyone else. While this is open your fighter stands still and can be hit. Leaving starts the 15 second grace: come back within it to take your fighter over, or it forfeits.";
+        this.resumeBtn.textContent = "Resume";
+        this.leaveBtn.textContent = "Leave the match";
+      }
+    }
+    this.menuEl.hidden = !on;
+    this.menuBtn.setAttribute("aria-expanded", String(on));
+    if (on) this.resumeBtn.focus();
+    else this.releaseFocus();
+  }
+
+  // Keys drive the game from window; a focused button would also take Space.
+  releaseFocus() {
+    const a = document.activeElement;
+    if (a && a !== document.body && this.root.contains(a)) a.blur();
+  }
+
+  openControls(fromMenu) {
+    this.controlsFromMenu = fromMenu;
+    this.controlsBody.textContent = "";
+    const pad = (() => {
+      try {
+        return [...(navigator.getGamepads?.() ?? [])].some((p) => p && p.connected);
+      } catch {
+        return false;
+      }
+    })();
+    const sections = controlsFor({ touch: this.isTouch, keyboard: this.hasKeyboard, guest: !this.spectating() && !!this.guest(), pad });
+    for (const sec of sections) {
+      const box = h("section", "controls-sec");
+      box.append(h("h3", "", sec.title));
+      const dl = h("dl");
+      for (const [what, how] of sec.rows) dl.append(h("dt", "", what), h("dd", "", how));
+      box.append(dl);
+      this.controlsBody.append(box);
+    }
+    this.controlsOpen = true;
+    this.controlsEl.hidden = false;
+    this.helpBtn.setAttribute("aria-expanded", "true");
+    this.controlsClose.focus();
+  }
+
+  closeControls() {
+    if (!this.controlsOpen) return;
+    this.controlsOpen = false;
+    this.controlsEl.hidden = true;
+    this.helpBtn.setAttribute("aria-expanded", "false");
+    if (this.controlsFromMenu && this.menuOpen) this.resumeBtn.focus();
+    else this.releaseFocus();
+  }
+
+  showBlocked(text, label, onClick, home = false) {
+    this.blockedHome.hidden = !home;
     this.blockedText.textContent = text;
     this.blockedBtn.textContent = label;
     this.blockedBtn.onclick = onClick;
@@ -232,6 +363,7 @@ export class UI {
     this.lobbyEl.hidden = phase !== "lobby" || this.replaying;
     if (phase !== "results") this.resultsEl.hidden = true;
     this.badge.hidden = phase !== "match" || this.replaying;
+    this.menuBtn.hidden = phase !== "match" || this.replaying;
     this.replayBtn.hidden = !l.replayAvailable;
     if (phase === "match") {
       this.badge.textContent = (spectator ? "Watching. " : "") + "Room " + l.room;

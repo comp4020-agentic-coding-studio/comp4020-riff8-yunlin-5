@@ -304,7 +304,7 @@ noscript a {
 .badge {
   position: absolute;
   right: 10px;
-  top: 8px;
+  top: 40px;
   font-size: 0.8rem;
   color: var(--ink-soft);
   pointer-events: none;
@@ -745,4 +745,115 @@ noscript a {
 body.touch .badge,
 body.touch .replaybar {
   top: 76px;
+}
+
+/* top-right: Controls (?) and the in-match Menu */
+.corner {
+  position: absolute;
+  right: max(8px, env(safe-area-inset-right));
+  top: 6px;
+  display: flex;
+  gap: 6px;
+  z-index: 12;
+}
+
+.corner-btn {
+  font: inherit;
+  font-size: 0.8rem;
+  min-width: 30px;
+  min-height: 28px;
+  padding: 2px 8px;
+  background: rgb(243 239 228 / 70%);
+  color: var(--seal);
+  border: 1px solid var(--seal);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.corner-btn:focus-visible {
+  outline: 2px solid var(--seal);
+  outline-offset: 2px;
+}
+
+body.touch .corner-btn {
+  min-width: 44px;
+  min-height: 40px;
+  font-size: 0.95rem;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgb(243 239 228 / 72%);
+}
+
+.overlay.light {
+  z-index: 16;
+  background: rgb(243 239 228 / 35%);
+}
+
+.menu-panel {
+  text-align: center;
+  width: min(420px, calc(100vw - 24px));
+}
+
+.menu-title {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+  letter-spacing: 0.05em;
+}
+
+.menu-text {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.menu-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.controls-panel {
+  width: min(620px, calc(100vw - 24px));
+}
+
+.controls-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 6px 22px;
+  margin-bottom: 10px;
+}
+
+.controls-sec h3 {
+  margin: 6px 0 4px;
+  font-size: 0.95rem;
+}
+
+.controls-sec dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.controls-sec dt {
+  color: var(--ink-soft);
+}
+
+.controls-sec dd {
+  margin: 0;
+  font-weight: bold;
+  text-align: right;
+}
+
+.blocked-home {
+  display: block;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #00e;
 }
